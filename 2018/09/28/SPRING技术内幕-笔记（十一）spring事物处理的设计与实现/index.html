@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="11.1事物的创建TransactionInterceptor的invoke的回调过程中会使用createTransactionIfNecessary，这个方法在其基类TransactionAspectSupport中实现，期间会使用AbstractPlatformTransactionManager调用getTransaction(txAttr)，这个过程要对不同情况进行处理，得到Transac">
+<meta name="keywords" content="spring">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SPRING技术内幕-笔记（十一）spring事物处理的设计与实现">
+<meta property="og:url" content="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="11.1事物的创建TransactionInterceptor的invoke的回调过程中会使用createTransactionIfNecessary，这个方法在其基类TransactionAspectSupport中实现，期间会使用AbstractPlatformTransactionManager调用getTransaction(txAttr)，这个过程要对不同情况进行处理，得到Transac">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/20150716102610570.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.245Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SPRING技术内幕-笔记（十一）spring事物处理的设计与实现">
+<meta name="twitter:description" content="11.1事物的创建TransactionInterceptor的invoke的回调过程中会使用createTransactionIfNecessary，这个方法在其基类TransactionAspectSupport中实现，期间会使用AbstractPlatformTransactionManager调用getTransaction(txAttr)，这个过程要对不同情况进行处理，得到Transac">
+<meta name="twitter:image" content="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/20150716102610570.png">
+
+<link rel="canonical" href="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>SPRING技术内幕-笔记（十一）spring事物处理的设计与实现 | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          SPRING技术内幕-笔记（十一）spring事物处理的设计与实现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-09-28 20:00:59" itemprop="dateCreated datePublished" datetime="2018-09-28T20:00:59+00:00">2018-09-28</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/spring/" itemprop="url" rel="index"><span itemprop="name">spring</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/" class="post-meta-item leancloud_visitors" data-flag-title="SPRING技术内幕-笔记（十一）spring事物处理的设计与实现" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><strong>11.1事物的创建</strong><br>TransactionInterceptor的invoke的回调过程中会使用createTransactionIfNecessary，这个方法在其基类TransactionAspectSupport中实现，期间会使用AbstractPlatformTransactionManager调用getTransaction(txAttr)，这个过程要对不同情况进行处理，得到TransactionStatus，然后塞进TransactionInfo中，最后将TransactionInfo与当前线程绑定，TransactionInfo穿插在整个事物处理过程中。<br>createTransactionIfNecessary的调用时序图：</p>
+<a id="more"></a>
+<p><img src="20150716102610570.png" alt="这里写图片描述"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">protected TransactionInfo createTransactionIfNecessary(</span><br><span class="line">		PlatformTransactionManager tm, TransactionAttribute txAttr, final String joinpointIdentification) &#123;</span><br><span class="line"></span><br><span class="line">	// If no name specified, apply method identification as transaction name.</span><br><span class="line">	//如果没有配置事物属性，就用方法名作为事物的名字</span><br><span class="line">	if (txAttr != null &amp;&amp; txAttr.getName() == null) &#123;</span><br><span class="line">		txAttr = new DelegatingTransactionAttribute(txAttr) &#123;</span><br><span class="line">			@Override</span><br><span class="line">			public String getName() &#123;</span><br><span class="line">				return joinpointIdentification;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;;</span><br><span class="line">	&#125;</span><br><span class="line">       //TransactionStatus 封装了事物执行的状态信息</span><br><span class="line">       TransactionStatus status = null;</span><br><span class="line">	if (txAttr != null) &#123;</span><br><span class="line">		if (tm != null) &#123;</span><br><span class="line">		//使用定义好的事物属性创建事物，返回事物的状态和 事物本身，由事物处理器去完成，事物处理器重写getTransaction</span><br><span class="line">		 //方法.</span><br><span class="line">			status = tm.getTransaction(txAttr);</span><br><span class="line">		&#125;</span><br><span class="line">		else &#123;</span><br><span class="line">			if (logger.isDebugEnabled()) &#123;</span><br><span class="line">				logger.debug(&quot;Skipping transactional joinpoint [&quot; + joinpointIdentification +</span><br><span class="line">						&quot;] because no transaction manager has been configured&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	//准备TransactionInfo，TransactionInfo封装了事物的配置信息以及TransactionStatus</span><br><span class="line">	return prepareTransactionInfo(tm, txAttr, joinpointIdentification, status);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>prepareTransactionInfo代码清单:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">protected TransactionInfo prepareTransactionInfo(PlatformTransactionManager tm,</span><br><span class="line">		TransactionAttribute txAttr, String joinpointIdentification, TransactionStatus status) &#123;</span><br><span class="line">       //创建新的TransactionInfo</span><br><span class="line">	TransactionInfo txInfo = new TransactionInfo(tm, txAttr, joinpointIdentification);</span><br><span class="line">	if (txAttr != null) &#123;</span><br><span class="line">		// We need a transaction for this method</span><br><span class="line">		if (logger.isTraceEnabled()) &#123;</span><br><span class="line">			logger.trace(&quot;Getting transaction for [&quot; + txInfo.getJoinpointIdentification() + &quot;]&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		// The transaction manager will flag an error if an incompatible tx already exists</span><br><span class="line">		//为TransactionInfo 设置TransactionStatus，这个TransactionStatus比较重要，内含了事物创建过程的信息，</span><br><span class="line">		//比如Transaction是由TransactionStatus持有的</span><br><span class="line">		txInfo.newTransactionStatus(status);</span><br><span class="line">	&#125;</span><br><span class="line">	else &#123;</span><br><span class="line">		// The TransactionInfo.hasTransaction() method will return</span><br><span class="line">		// false. We created it only to preserve the integrity of</span><br><span class="line">		// the ThreadLocal stack maintained in this class.</span><br><span class="line">		if (logger.isTraceEnabled())</span><br><span class="line">			logger.trace(&quot;Don&apos;t need to create transaction for [&quot; + joinpointIdentification +</span><br><span class="line">					&quot;]: This method isn&apos;t transactional.&quot;);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	// We always bind the TransactionInfo to the thread, even if we didn&apos;t create</span><br><span class="line">	// a new transaction here. This guarantees that the TransactionInfo stack</span><br><span class="line">       //将当前的TransactionInfo 与当前线程绑定，TransactionInfo 内部用一个含量持有以前的TransactionInfo ，这样</span><br><span class="line">       //就会有一系列的TransactionInfo ，虽然不会创建新的事物，但是总会简历新的TransactionInfo 。</span><br><span class="line">	txInfo.bindToThread();</span><br><span class="line">	return txInfo;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接下来就是AbstractPlatformTransactionManager得getTransaction，此方法提供了事物处理流程的一个模板。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">public final TransactionStatus getTransaction(TransactionDefinition definition) throws TransactionException &#123;</span><br><span class="line">//doGetTransaction由事物处理器完成，比如datasourcetransactionmanager</span><br><span class="line">	Object transaction = doGetTransaction();</span><br><span class="line"></span><br><span class="line">	// Cache debug flag to avoid repeated checks.</span><br><span class="line">	//缓存标志，防止重复检查</span><br><span class="line">	boolean debugEnabled = logger.isDebugEnabled();</span><br><span class="line"></span><br><span class="line">	if (definition == null) &#123;</span><br><span class="line">		// Use defaults if no transaction definition given.</span><br><span class="line">		//使用默认事物处理属性，默认的配置如下:</span><br><span class="line">		//	private int propagationBehavior = PROPAGATION_REQUIRED;</span><br><span class="line">		//	private int isolationLevel = ISOLATION_DEFAULT;</span><br><span class="line">		//	private int timeout = TIMEOUT_DEFAULT;</span><br><span class="line">		//	private boolean readOnly = false;</span><br><span class="line">		definition = new DefaultTransactionDefinition();</span><br><span class="line">	&#125;</span><br><span class="line">       //判断当前事物是否已经存在,如果已经存在事物，那么需要根据事物属性中定义的事物传播性配置来处理事物的</span><br><span class="line">       //产生.</span><br><span class="line">	if (isExistingTransaction(transaction)) &#123;</span><br><span class="line">		// Existing transaction found -&gt; check propagation behavior to find out how to behave.</span><br><span class="line">		//如果当前线程存，那么在检查事物处理行为,将已经存在的事物进行处理，结果封装在</span><br><span class="line">		//TransactionState中。</span><br><span class="line">		return handleExistingTransaction(definition, transaction, debugEnabled);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	// Check definition settings for new transaction.</span><br><span class="line">	//检查事物中timeout的设置是否合理</span><br><span class="line">	if (definition.getTimeout() &lt; TransactionDefinition.TIMEOUT_DEFAULT) &#123;</span><br><span class="line">		throw new InvalidTimeoutException(&quot;Invalid transaction timeout&quot;, definition.getTimeout());</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	// No existing transaction found -&gt; check propagation behavior to find out how to proceed.</span><br><span class="line"></span><br><span class="line">	if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_MANDATORY) &#123;</span><br><span class="line">		throw new IllegalTransactionStateException(</span><br><span class="line">				&quot;No existing transaction found for transaction marked with propagation &apos;mandatory&apos;&quot;);</span><br><span class="line">	&#125;</span><br><span class="line">//当前没有存在的事物，那么根据配置的事物属性的事物传播行为处理，比如PROPAGATION_REQUIRED，</span><br><span class="line">	//PROPAGATION_REQUIRES_NEW，PROPAGATION_NESTED</span><br><span class="line">	else if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRED ||</span><br><span class="line">			definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW ||</span><br><span class="line">	    definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) &#123;</span><br><span class="line">		SuspendedResourcesHolder suspendedResources = suspend(null);</span><br><span class="line">		if (debugEnabled) &#123;</span><br><span class="line">			logger.debug(&quot;Creating new transaction with name [&quot; + definition.getName() + &quot;]: &quot; + definition);</span><br><span class="line">		&#125;</span><br><span class="line">		try &#123;</span><br><span class="line">			boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);</span><br><span class="line">		//要返回的TransactionStatus，封装事物处理情况，getTransactionSynchronization()默认为</span><br><span class="line">		//SYNCHRONIZATION_ALWAYS，所以newSynchronization为true</span><br><span class="line">			DefaultTransactionStatus status = newTransactionStatus(</span><br><span class="line">					definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);</span><br><span class="line">			//创建事物的调用，由具体的事物处理器来完成。</span><br><span class="line">			doBegin(transaction, definition);</span><br><span class="line">			prepareSynchronization(status, definition);</span><br><span class="line">			return status;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (RuntimeException ex) &#123;</span><br><span class="line">			resume(null, suspendedResources);</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (Error err) &#123;</span><br><span class="line">			resume(null, suspendedResources);</span><br><span class="line">			throw err;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	else &#123;</span><br><span class="line">		// Create &quot;empty&quot; transaction: no actual transaction, but potentially synchronization.</span><br><span class="line">		boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);</span><br><span class="line">		//设置事物为空，创建新的事物状态对象，没有transaction。</span><br><span class="line">		return prepareTransactionStatus(definition, null, true, newSynchronization, debugEnabled, null);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>AbstractPlatformTransactionManager创建事物的过程可以看到TransactionStatus的创建过程。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">protected DefaultTransactionStatus newTransactionStatus(</span><br><span class="line">		TransactionDefinition definition, Object transaction, boolean newTransaction,</span><br><span class="line">		boolean newSynchronization, boolean debug, Object suspendedResources) &#123;</span><br><span class="line">       //判断是不是新的事物，如果是新的事物，需要放到当前线程中去，</span><br><span class="line">       //AbstractPlatformTransactionManager维护了一系列的threadLocal变量来保持事物的属性，比如并</span><br><span class="line">       //事物并发事物隔离级别，是否有活跃的事物。</span><br><span class="line">	boolean actualNewSynchronization = newSynchronization &amp;&amp;</span><br><span class="line">			!TransactionSynchronizationManager.isSynchronizationActive();</span><br><span class="line">			//使用DefaultTransactionStatus返回</span><br><span class="line">	return new DefaultTransactionStatus(</span><br><span class="line">			transaction, newTransaction, actualNewSynchronization,</span><br><span class="line">			definition.isReadOnly(), debug, suspendedResources);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所谓创建，首先是把创建工作较给具体的事物处理器来完成，比如dataSourceTransactionManager，把创建的事物对象哎TransactionStatus中保存，然后把其他事物的属性和线程ThreadLocal绑定。<br>对于线程中已经存在事物，会涉及事物传播属性的具体处理。处理逻辑在AbstractPlatformTransactionManager的handleExistingTransaction方法中：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br></pre></td><td class="code"><pre><span class="line">private TransactionStatus handleExistingTransaction(</span><br><span class="line">			TransactionDefinition definition, Object transaction, boolean debugEnabled)</span><br><span class="line">			throws TransactionException &#123;</span><br><span class="line">//如果当前线程已有事物存在且当前事物的传播属性是PROPAGATION_NEVER，那么抛出异常，这种无法处理</span><br><span class="line">		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NEVER) &#123;</span><br><span class="line">			throw new IllegalTransactionStateException(</span><br><span class="line">					&quot;Existing transaction found for transaction marked with propagation &apos;never&apos;&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">         //如果当前线程存在事物并且当前事物传播属性是PROPAGATION_NOT_SUPPORTED，那么将事物挂起</span><br><span class="line">		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NOT_SUPPORTED) &#123;</span><br><span class="line">			if (debugEnabled) &#123;</span><br><span class="line">				logger.debug(&quot;Suspending current transaction&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">			Object suspendedResources = suspend(transaction);</span><br><span class="line">			boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);</span><br><span class="line">			//此时Transaction为null意味着事物方法不需要在事物环境中执行，同事挂起的事物记录到TransactionStatus当中</span><br><span class="line">			//包含ThreadLocal对事物信息的记录</span><br><span class="line">			return prepareTransactionStatus(</span><br><span class="line">					definition, null, false, newSynchronization, debugEnabled, suspendedResources);</span><br><span class="line">		&#125;</span><br><span class="line">//如果当前事物的传播属性是PROPAGATION_REQUIRES_NEW，那么将当前线程中已有的事物挂起，与创建事物不同的是，此处需要将已有</span><br><span class="line">//事物挂起，而新建不需要这步操作</span><br><span class="line">		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW) &#123;</span><br><span class="line">			if (debugEnabled) &#123;</span><br><span class="line">				logger.debug(&quot;Suspending current transaction, creating new transaction with name [&quot; +</span><br><span class="line">						definition.getName() + &quot;]&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">			SuspendedResourcesHolder suspendedResources = suspend(transaction);</span><br><span class="line">			try &#123;</span><br><span class="line">				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);</span><br><span class="line">				DefaultTransactionStatus status = newTransactionStatus(</span><br><span class="line">						definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);</span><br><span class="line">				doBegin(transaction, definition);</span><br><span class="line">				prepareSynchronization(status, definition);</span><br><span class="line">				return status;</span><br><span class="line">			&#125;</span><br><span class="line">			catch (RuntimeException beginEx) &#123;</span><br><span class="line">				resumeAfterBeginException(transaction, suspendedResources, beginEx);</span><br><span class="line">				throw beginEx;</span><br><span class="line">			&#125;</span><br><span class="line">			catch (Error beginErr) &#123;</span><br><span class="line">				resumeAfterBeginException(transaction, suspendedResources, beginErr);</span><br><span class="line">				throw beginErr;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	//嵌套事物的创建</span><br><span class="line">		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) &#123;</span><br><span class="line">			if (!isNestedTransactionAllowed()) &#123;</span><br><span class="line">				throw new NestedTransactionNotSupportedException(</span><br><span class="line">						&quot;Transaction manager does not allow nested transactions by default - &quot; +</span><br><span class="line">						&quot;specify &apos;nestedTransactionAllowed&apos; property with value &apos;true&apos;&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">			if (debugEnabled) &#123;</span><br><span class="line">				logger.debug(&quot;Creating nested transaction with name [&quot; + definition.getName() + &quot;]&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">			if (useSavepointForNestedTransaction()) &#123;</span><br><span class="line">				// Create savepoint within existing Spring-managed transaction,</span><br><span class="line">				// through the SavepointManager API implemented by TransactionStatus.</span><br><span class="line">				// Usually uses JDBC 3.0 savepoints. Never activates Spring synchronization.</span><br><span class="line">				//在spring事物处理中，创建事物保存点</span><br><span class="line">				DefaultTransactionStatus status =</span><br><span class="line">						prepareTransactionStatus(definition, transaction, false, false, debugEnabled, null);</span><br><span class="line">				status.createAndHoldSavepoint();</span><br><span class="line">				return status;</span><br><span class="line">			&#125;</span><br><span class="line">			else &#123;</span><br><span class="line">				// Nested transaction through nested begin and commit/rollback calls.</span><br><span class="line">				// Usually only for JTA: Spring synchronization might get activated here</span><br><span class="line">				// in case of a pre-existing JTA transaction.</span><br><span class="line">				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);</span><br><span class="line">				DefaultTransactionStatus status = newTransactionStatus(</span><br><span class="line">						definition, transaction, true, newSynchronization, debugEnabled, null);</span><br><span class="line">				doBegin(transaction, definition);</span><br><span class="line">				prepareSynchronization(status, definition);</span><br><span class="line">				return status;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		// Assumably PROPAGATION_SUPPORTS or PROPAGATION_REQUIRED.</span><br><span class="line">		if (debugEnabled) &#123;</span><br><span class="line">			logger.debug(&quot;Participating in existing transaction&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		//判断当前事物方法中的事物配置与已有事物的属性配置是否一致，如果不一致则不执行事物的方法并且抛出异常</span><br><span class="line">		if (isValidateExistingTransaction()) &#123;</span><br><span class="line">			if (definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT) &#123;</span><br><span class="line">				Integer currentIsolationLevel = TransactionSynchronizationManager.getCurrentTransactionIsolationLevel();</span><br><span class="line">				if (currentIsolationLevel == null || currentIsolationLevel != definition.getIsolationLevel()) &#123;</span><br><span class="line">					Constants isoConstants = DefaultTransactionDefinition.constants;</span><br><span class="line">					throw new IllegalTransactionStateException(&quot;Participating transaction with definition [&quot; +</span><br><span class="line">							definition + &quot;] specifies isolation level which is incompatible with existing transaction: &quot; +</span><br><span class="line">							(currentIsolationLevel != null ?</span><br><span class="line">									isoConstants.toCode(currentIsolationLevel, DefaultTransactionDefinition.PREFIX_ISOLATION) :</span><br><span class="line">									&quot;(unknown)&quot;));</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			if (!definition.isReadOnly()) &#123;</span><br><span class="line">				if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) &#123;</span><br><span class="line">					throw new IllegalTransactionStateException(&quot;Participating transaction with definition [&quot; +</span><br><span class="line">							definition + &quot;] is not marked as read-only but existing transaction is&quot;);</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		//返回TransactionStatus，参数newTransaction为false，表示不是使用新的事物</span><br><span class="line">		boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);</span><br><span class="line">		return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>11.2事物的挂起</strong><br>事物的挂起牵扯到当前线程与事物处理信息的保存：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">protected final SuspendedResourcesHolder suspend(Object transaction) throws TransactionException &#123;</span><br><span class="line">	if (TransactionSynchronizationManager.isSynchronizationActive()) &#123;</span><br><span class="line">		List&lt;TransactionSynchronization&gt; suspendedSynchronizations = doSuspendSynchronization();</span><br><span class="line">		try &#123;</span><br><span class="line">			Object suspendedResources = null;</span><br><span class="line">			if (transaction != null) &#123;</span><br><span class="line">			//把挂起的事物交给具体的事物处理器去完成，如果事物处理器不支持事物挂起，就会抛出异常</span><br><span class="line">				suspendedResources = doSuspend(transaction);</span><br><span class="line">			&#125;</span><br><span class="line">			//设置事物处理状态信息，放到线程中去，并且重置线程中的相关的threadlocal变量</span><br><span class="line">			String name = TransactionSynchronizationManager.getCurrentTransactionName();</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionName(null);</span><br><span class="line">			boolean readOnly = TransactionSynchronizationManager.isCurrentTransactionReadOnly();</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionReadOnly(false);</span><br><span class="line">			Integer isolationLevel = TransactionSynchronizationManager.getCurrentTransactionIsolationLevel();</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionIsolationLevel(null);</span><br><span class="line">			boolean wasActive = TransactionSynchronizationManager.isActualTransactionActive();</span><br><span class="line">			TransactionSynchronizationManager.setActualTransactionActive(false);</span><br><span class="line">			return new SuspendedResourcesHolder(</span><br><span class="line">					suspendedResources, suspendedSynchronizations, name, readOnly, isolationLevel, wasActive);</span><br><span class="line">		&#125;</span><br><span class="line">		catch (RuntimeException ex) &#123;</span><br><span class="line">			// doSuspend failed - original transaction is still active...</span><br><span class="line">			doResumeSynchronization(suspendedSynchronizations);</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (Error err) &#123;</span><br><span class="line">			// doSuspend failed - original transaction is still active...</span><br><span class="line">			//doSuspend方法失败，但是原先的事物依然存在</span><br><span class="line">			doResumeSynchronization(suspendedSynchronizations);</span><br><span class="line">			throw err;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	else if (transaction != null) &#123;</span><br><span class="line">		// Transaction active but no synchronization active.</span><br><span class="line">		Object suspendedResources = doSuspend(transaction);</span><br><span class="line">		return new SuspendedResourcesHolder(suspendedResources);</span><br><span class="line">	&#125;</span><br><span class="line">	else &#123;</span><br><span class="line">		// Neither transaction nor synchronization active.</span><br><span class="line">		return null;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>11.3  事务的提交</strong><br>commitTransactionAfterReturning方法通过直接调用事物处理器来完成事物的提交</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">protected void commitTransactionAfterReturning(TransactionInfo txInfo) &#123;</span><br><span class="line">	if (txInfo != null &amp;&amp; txInfo.hasTransaction()) &#123;</span><br><span class="line">		if (logger.isTraceEnabled()) &#123;</span><br><span class="line">			logger.trace(&quot;Completing transaction for [&quot; + txInfo.getJoinpointIdentification() + &quot;]&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		//txInfo是TransactionInfo ，调用事物处理器的commit方法</span><br><span class="line">		txInfo.getTransactionManager().commit(txInfo.getTransactionStatus());</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>AbstractPlatformTransactionManager的commit方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">	public final void commit(TransactionStatus status) throws TransactionException &#123;</span><br><span class="line">	//status.isCompleted()表示事务已经结束</span><br><span class="line">		if (status.isCompleted()) &#123;</span><br><span class="line">			throw new IllegalTransactionStateException(</span><br><span class="line">					&quot;Transaction is already completed - do not call commit or rollback more than once per transaction&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">//事务处理过程中出现异常，则进行回滚</span><br><span class="line">		DefaultTransactionStatus defStatus = (DefaultTransactionStatus) status;</span><br><span class="line">		if (defStatus.isLocalRollbackOnly()) &#123;</span><br><span class="line">			if (defStatus.isDebug()) &#123;</span><br><span class="line">				logger.debug(&quot;Transactional code has requested rollback&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">			processRollback(defStatus);</span><br><span class="line">			return;</span><br><span class="line">		&#125;</span><br><span class="line">		if (!shouldCommitOnGlobalRollbackOnly() &amp;&amp; defStatus.isGlobalRollbackOnly()) &#123;</span><br><span class="line">			if (defStatus.isDebug()) &#123;</span><br><span class="line">				logger.debug(&quot;Global transaction is marked as rollback-only but transactional code requested commit&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">		//处理回滚</span><br><span class="line">			processRollback(defStatus);</span><br><span class="line">			// Throw UnexpectedRollbackException only at outermost transaction boundary</span><br><span class="line">			// or if explicitly asked to.</span><br><span class="line">			if (status.isNewTransaction() || isFailEarlyOnGlobalRollbackOnly()) &#123;</span><br><span class="line">				throw new UnexpectedRollbackException(</span><br><span class="line">						&quot;Transaction rolled back because it has been marked as rollback-only&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">			return;</span><br><span class="line">		&#125;</span><br><span class="line">//最后调事务</span><br><span class="line">		processCommit(defStatus);</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>处理事务的提交：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line">private void processCommit(DefaultTransactionStatus status) throws TransactionException &#123;</span><br><span class="line">	try &#123;</span><br><span class="line">		boolean beforeCompletionInvoked = false;</span><br><span class="line">		try &#123;</span><br><span class="line">		// 事务的提交准备操作由具体的事物处理器完成</span><br><span class="line">			prepareForCommit(status);</span><br><span class="line">			triggerBeforeCommit(status);</span><br><span class="line">			triggerBeforeCompletion(status);</span><br><span class="line">			beforeCompletionInvoked = true;</span><br><span class="line">			boolean globalRollbackOnly = false;</span><br><span class="line">			if (status.isNewTransaction() || isFailEarlyOnGlobalRollbackOnly()) &#123;</span><br><span class="line">				globalRollbackOnly = status.isGlobalRollbackOnly();</span><br><span class="line">			&#125;</span><br><span class="line">			//嵌套事物的处理</span><br><span class="line">			if (status.hasSavepoint()) &#123;</span><br><span class="line">				if (status.isDebug()) &#123;</span><br><span class="line">					logger.debug(&quot;Releasing transaction savepoint&quot;);</span><br><span class="line">				&#125;</span><br><span class="line">				status.releaseHeldSavepoint();</span><br><span class="line">			&#125;</span><br><span class="line">			 //如果当前持有的事务是新建立的事物那么由具体的事务处理器完成提交，否则由已存在的事务完成提交</span><br><span class="line">			else if (status.isNewTransaction()) &#123;</span><br><span class="line">				if (status.isDebug()) &#123;</span><br><span class="line">					logger.debug(&quot;Initiating transaction commit&quot;);</span><br><span class="line">				&#125;</span><br><span class="line">				 //由具体的事务处理器完成提交</span><br><span class="line">				doCommit(status);</span><br><span class="line">			&#125;</span><br><span class="line">			// Throw UnexpectedRollbackException if we have a global rollback-only</span><br><span class="line">			// marker but still didn&apos;t get a corresponding exception from commit.</span><br><span class="line">			if (globalRollbackOnly) &#123;</span><br><span class="line">				throw new UnexpectedRollbackException(</span><br><span class="line">						&quot;Transaction silently rolled back because it has been marked as rollback-only&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (UnexpectedRollbackException ex) &#123;</span><br><span class="line">			// can only be caused by doCommit</span><br><span class="line">			triggerAfterCompletion(status, TransactionSynchronization.STATUS_ROLLED_BACK);</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (TransactionException ex) &#123;</span><br><span class="line">			// can only be caused by doCommit</span><br><span class="line">			if (isRollbackOnCommitFailure()) &#123;</span><br><span class="line">				doRollbackOnCommitException(status, ex);</span><br><span class="line">			&#125;</span><br><span class="line">			else &#123;</span><br><span class="line">				triggerAfterCompletion(status, TransactionSynchronization.STATUS_UNKNOWN);</span><br><span class="line">			&#125;</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (RuntimeException ex) &#123;</span><br><span class="line">			if (!beforeCompletionInvoked) &#123;</span><br><span class="line">				triggerBeforeCompletion(status);</span><br><span class="line">			&#125;</span><br><span class="line">			doRollbackOnCommitException(status, ex);</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (Error err) &#123;</span><br><span class="line">			if (!beforeCompletionInvoked) &#123;</span><br><span class="line">				triggerBeforeCompletion(status);</span><br><span class="line">			&#125;</span><br><span class="line">			doRollbackOnCommitException(status, err);</span><br><span class="line">			throw err;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		// Trigger afterCommit callbacks, with an exception thrown there</span><br><span class="line">		// propagated to callers but the transaction still considered as committed.</span><br><span class="line">		try &#123;</span><br><span class="line">		//触发triggerAfterCommit回滚</span><br><span class="line">			triggerAfterCommit(status);</span><br><span class="line">		&#125;</span><br><span class="line">		finally &#123;</span><br><span class="line">			triggerAfterCompletion(status, TransactionSynchronization.STATUS_COMMITTED);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">	finally &#123;</span><br><span class="line">		cleanupAfterCompletion(status);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>11.4事务的回滚</strong><br>回滚和提交比较类似:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">private void processRollback(DefaultTransactionStatus status) &#123;</span><br><span class="line">		try &#123;</span><br><span class="line">			try &#123;</span><br><span class="line">				triggerBeforeCompletion(status);</span><br><span class="line">				//嵌套事务的回滚</span><br><span class="line">				if (status.hasSavepoint()) &#123;</span><br><span class="line">					if (status.isDebug()) &#123;</span><br><span class="line">						logger.debug(&quot;Rolling back transaction to savepoint&quot;);</span><br><span class="line">					&#125;</span><br><span class="line">					status.rollbackToHeldSavepoint();</span><br><span class="line">				&#125;</span><br><span class="line">				 //新建事务的回滚</span><br><span class="line">				else if (status.isNewTransaction()) &#123;</span><br><span class="line">					if (status.isDebug()) &#123;</span><br><span class="line">						logger.debug(&quot;Initiating transaction rollback&quot;);</span><br><span class="line">					&#125;</span><br><span class="line">					doRollback(status);</span><br><span class="line">				&#125;</span><br><span class="line">				//如果当前事务调用方法中，没有新建事务的回滚方法</span><br><span class="line">				else if (status.hasTransaction()) &#123;</span><br><span class="line">					if (status.isLocalRollbackOnly() || isGlobalRollbackOnParticipationFailure()) &#123;</span><br><span class="line">						if (status.isDebug()) &#123;</span><br><span class="line">							logger.debug(&quot;Participating transaction failed - marking existing transaction as rollback-only&quot;);</span><br><span class="line">						&#125;</span><br><span class="line">						doSetRollbackOnly(status);</span><br><span class="line">					&#125;//由线程的前一个事物来处理，当前不做任何操作</span><br><span class="line">					else &#123;</span><br><span class="line">						if (status.isDebug()) &#123;</span><br><span class="line">							logger.debug(&quot;Participating transaction failed - letting transaction originator decide on rollback&quot;);</span><br><span class="line">						&#125;</span><br><span class="line">					&#125;</span><br><span class="line">				&#125;</span><br><span class="line">				else &#123;</span><br><span class="line">					logger.debug(&quot;Should roll back transaction but cannot - no transaction available&quot;);</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			catch (RuntimeException ex) &#123;</span><br><span class="line">				triggerAfterCompletion(status, TransactionSynchronization.STATUS_UNKNOWN);</span><br><span class="line">				throw ex;</span><br><span class="line">			&#125;</span><br><span class="line">			catch (Error err) &#123;</span><br><span class="line">				triggerAfterCompletion(status, TransactionSynchronization.STATUS_UNKNOWN);</span><br><span class="line">				throw err;</span><br><span class="line">			&#125;</span><br><span class="line">			triggerAfterCompletion(status, TransactionSynchronization.STATUS_ROLLED_BACK);</span><br><span class="line">		&#125;</span><br><span class="line">		finally &#123;</span><br><span class="line">			cleanupAfterCompletion(status);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>到此事务的处理新建，挂起，提交、回滚完成，下一步说一下具体的事物处理器对事物的处理过程。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/" title="SPRING技术内幕-笔记（十一）spring事物处理的设计与实现">https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/spring/" rel="tag"><i class="fa fa-tag"></i> spring</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/" rel="prev" title="SPRING技术内幕-笔记（十）spring声明式事物处理">
+      <i class="fa fa-chevron-left"></i> SPRING技术内幕-笔记（十）spring声明式事物处理
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/09/28/SPRING技术内幕-笔记（十二）spring驱动ibatis的设计与实现/" rel="next" title="SPRING技术内幕-笔记（十二）spring驱动ibatis的设计与实现">
+      SPRING技术内幕-笔记（十二）spring驱动ibatis的设计与实现 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

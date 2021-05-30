@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="gradle 的打包task在使用gradle构建springboot的项目时，可以查看当前项目由那些gradle的任务，我们在springboot的初始化页面 构建一个简单的springboot项目，然后在本地我们用vscode打开，执行./gradlew task得到如下输出：">
+<meta name="keywords" content="打包文件">
+<meta property="og:type" content="article">
+<meta property="og:title" content="spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解">
+<meta property="og:url" content="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="gradle 的打包task在使用gradle构建springboot的项目时，可以查看当前项目由那些gradle的任务，我们在springboot的初始化页面 构建一个简单的springboot项目，然后在本地我们用vscode打开，执行./gradlew task得到如下输出：">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/bootjar.png">
+<meta property="og:image" content="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/bootjar1.png">
+<meta property="og:image" content="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/bootjar2.png">
+<meta property="og:image" content="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/bootjar3.png">
+<meta property="og:image" content="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/bootjar4.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.533Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解">
+<meta name="twitter:description" content="gradle 的打包task在使用gradle构建springboot的项目时，可以查看当前项目由那些gradle的任务，我们在springboot的初始化页面 构建一个简单的springboot项目，然后在本地我们用vscode打开，执行./gradlew task得到如下输出：">
+<meta name="twitter:image" content="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/bootjar.png">
+
+<link rel="canonical" href="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解 | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2019-06-07 15:56:32" itemprop="dateCreated datePublished" datetime="2019-06-07T15:56:32+00:00">2019-06-07</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/spring-boot-cloud/" itemprop="url" rel="index"><span itemprop="name">spring_boot_cloud</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/" class="post-meta-item leancloud_visitors" data-flag-title="spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="gradle-的打包task"><a href="#gradle-的打包task" class="headerlink" title="gradle 的打包task"></a>gradle 的打包task</h3><p>在使用gradle构建springboot的项目时，可以查看当前项目由那些gradle的任务，我们在<a href="https://start.spring.io/" target="_blank" rel="noopener">springboot的初始化页面</a> 构建一个简单的springboot项目，然后在本地我们用vscode打开，执行./gradlew task得到如下输出：</p>
+<a id="more"></a>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line">&gt; Task :tasks</span><br><span class="line"></span><br><span class="line">------------------------------------------------------------</span><br><span class="line">Tasks runnable from root project</span><br><span class="line">------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">Application tasks</span><br><span class="line">-----------------</span><br><span class="line">bootRun - Runs this project as a Spring Boot application.</span><br><span class="line"></span><br><span class="line">Build tasks</span><br><span class="line">-----------</span><br><span class="line">assemble - Assembles the outputs of this project.</span><br><span class="line">bootJar - Assembles an executable jar archive containing the main classes and their dependencies.</span><br><span class="line">build - Assembles and tests this project.</span><br><span class="line">buildDependents - Assembles and tests this project and all projects that depend on it.</span><br><span class="line">buildNeeded - Assembles and tests this project and all projects it depends on.</span><br><span class="line">classes - Assembles main classes.</span><br><span class="line">clean - Deletes the build directory.</span><br><span class="line">jar - Assembles a jar archive containing the main classes.</span><br><span class="line">testClasses - Assembles test classes.</span><br><span class="line"></span><br><span class="line">Build Setup tasks</span><br><span class="line">-----------------</span><br><span class="line">init - Initializes a new Gradle build.</span><br><span class="line">wrapper - Generates Gradle wrapper files.</span><br><span class="line"></span><br><span class="line">Documentation tasks</span><br><span class="line">-------------------</span><br><span class="line">javadoc - Generates Javadoc API documentation for the main source code.</span><br><span class="line"></span><br><span class="line">Help tasks</span><br><span class="line">----------</span><br><span class="line">buildEnvironment - Displays all buildscript dependencies declared in root project &apos;spring-lecture&apos;.</span><br><span class="line">components - Displays the components produced by root project &apos;spring-lecture&apos;. [incubating]</span><br><span class="line">dependencies - Displays all dependencies declared in root project &apos;spring-lecture&apos;.</span><br><span class="line">dependencyInsight - Displays the insight into a specific dependency in root project &apos;spring-lecture&apos;.</span><br><span class="line">dependencyManagement - Displays the dependency management declared in root project &apos;spring-lecture&apos;.</span><br><span class="line">dependentComponents - Displays the dependent components of components in root project &apos;spring-lecture&apos;. [incubating]</span><br><span class="line">help - Displays a help message.</span><br><span class="line">model - Displays the configuration model of root project &apos;spring-lecture&apos;. [incubating]</span><br><span class="line">projects - Displays the sub-projects of root project &apos;spring-lecture&apos;.</span><br><span class="line">properties - Displays the properties of root project &apos;spring-lecture&apos;.</span><br><span class="line">tasks - Displays the tasks runnable from root project &apos;spring-lecture&apos;.</span><br><span class="line"></span><br><span class="line">Verification tasks</span><br><span class="line">------------------</span><br><span class="line">check - Runs all checks.</span><br><span class="line">test - Runs the unit tests.</span><br><span class="line"></span><br><span class="line">Rules</span><br><span class="line">-----</span><br><span class="line">Pattern: clean&lt;TaskName&gt;: Cleans the output files of a task.</span><br><span class="line">Pattern: build&lt;ConfigurationName&gt;: Assembles the artifacts of a configuration.</span><br><span class="line">Pattern: upload&lt;ConfigurationName&gt;: Assembles and uploads the artifacts belonging to a configuration.</span><br><span class="line"></span><br><span class="line">To see all tasks and more detail, run gradlew tasks --all</span><br><span class="line"></span><br><span class="line">To see more detail about a task, run gradlew help --task &lt;task&gt;</span><br><span class="line"></span><br><span class="line">BUILD SUCCESSFUL in 2s</span><br><span class="line">1 actionable task: 1 executed</span><br></pre></td></tr></table></figure>
+
+<p>【bootJar - Assembles an executable jar archive containing the main classes and their dependencies.】<br>这里就是将整个工程打包，生成一个自包含的jar包。<br>我们可以将当前工程下的build/libs下的jar包删除，然后执行： ./gradlew  bootJar<br>就会重新生成jar包。jar包名字：工程名字-版本号.jar,这个jar包我们可以直接用java运行：<br><img src="bootjar.png" alt="bootjar.png"></p>
+<p>这个jar是一个自包含的，里边包含了运行的所有依赖，使用jar命令对其解压，查看内部有哪些内容：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">jar -xvf spring-lecture-0.0.1-SNAPSHOT.jar</span><br><span class="line"> BOOT-INF</span><br><span class="line"> META-INF</span><br><span class="line"> org</span><br></pre></td></tr></table></figure>
+
+<h3 id="jar包目录结构"><a href="#jar包目录结构" class="headerlink" title="jar包目录结构"></a>jar包目录结构</h3><p>解压后有三个目录： BOOT-INF、 META-INF、org</p>
+<p> BOOT-INF/classes里边是我们自己的工程的代码以及配置文件， BOOT-INF/lib里边是所有的依赖：<br> <img src="bootjar1.png" alt="bootjar1.png"><br>META-INF下面有一个MANIFEST.MF文件，里边的内容如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Manifest-Version: 1.0</span><br><span class="line">Start-Class: com.tdl.springlecture.SpringLectureApplication</span><br><span class="line">Spring-Boot-Classes: BOOT-INF/classes/</span><br><span class="line">Spring-Boot-Lib: BOOT-INF/lib/</span><br><span class="line">Spring-Boot-Version: 2.1.5.RELEASE</span><br><span class="line">Main-Class: org.springframework.boot.loader.JarLauncher</span><br></pre></td></tr></table></figure>
+
+<p>此文件指定了入口文件，Main-Class是开始启动的类，Start-Class是我们自己写的包含main方法的全称。<br>库依赖路径，class文件路径，Spring-Boot的版本，Manifest的版本。Main-Class和Start-Class之间的关系后续介绍。<br>PS：Main-Class: org.springframework.boot.loader.JarLauncher在文件的结尾处又要换行，不然无法启动。</p>
+<p>org目录是spring提供的一些class文件。<br> <img src="bootjar2.png" alt="bootjar2.png"><br>其中就有Main-Class: org.springframework.boot.loader.JarLauncher。</p>
+<p>这里有个疑问，就是org目录下JarLauncher这些class文件是从哪里来的，我们在工程里边搜索压根搜索不到，如果想看这些类的源码其实可以引入相关的依赖【org.springframework.boot:spring-boot-loader】<br> <img src="bootjar3.png" alt="bootjar3.png"></p>
+<p>在JarLauncher的源码中我们看到了BOOT-INF/classes/、BOOT-INF/lib/这些熟悉的路径，源码面前无虚假。</p>
+<p>Launcher for JAR based archives. This launcher assumes that dependency jars are included inside a /BOOT-INF/lib directory and that application classes are included inside a /BOOT-INF/classes directory.</p>
+<p>基于jar的启动器，启动器假设jar包的依赖在 /BOOT-INF/lib目录下，应用的class在/BOOT-INF/classes目录内。</p>
+<h3 id="JarLauncher的继承体系结构与源码分析："><a href="#JarLauncher的继承体系结构与源码分析：" class="headerlink" title="JarLauncher的继承体系结构与源码分析："></a>JarLauncher的继承体系结构与源码分析：</h3><p> <img src="bootjar4.png" alt="bootjar4.png"><br>ExecutableArchiveLauncher下面有JarLauncher和WarLauncher，我们只看JarLauncher。<br>JarLauncher由于是启动类，肯定有main方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public static void main(String[] args) throws Exception &#123;</span><br><span class="line">  new JarLauncher().launch(args);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里记事本实例化了一个JarLauncher的实例，然后调了父类 Launcher 的launch方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Launch the application. This method is the initial entry point that should be</span><br><span class="line"> * called by a subclass &#123;@code public static void main(String[] args)&#125; method.</span><br><span class="line"> * @param args the incoming arguments</span><br><span class="line"> * @throws Exception if the application fails to launch</span><br><span class="line"> */</span><br><span class="line"> 启动一个应用，这个方法应该被初始的入口点，这个入口点应该是一个Launcher的子类的 public static void main(String[] args)这样的方法调用</span><br><span class="line">protected void launch(String[] args) throws Exception &#123;</span><br><span class="line">  JarFile.registerUrlProtocolHandler();//不重要略过，只是注册一些关于url的属性</span><br><span class="line">  //构建一个类加载器，我么先看一下getClassPathArchives方法做了什么</span><br><span class="line">  ClassLoader classLoader = createClassLoader(getClassPathArchives());</span><br><span class="line">  launch(args, getMainClass(), classLoader);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>getClassPathArchives()：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Returns the archives that will be used to construct the class path.</span><br><span class="line"> * @return the class path archives</span><br><span class="line"> * @throws Exception if the class path archives cannot be obtained</span><br><span class="line"> */</span><br><span class="line"> Launcher的一个抽象方法，返回用来构建class path的归档文件</span><br><span class="line">protected abstract List&lt;Archive&gt; getClassPathArchives() throws Exception;</span><br></pre></td></tr></table></figure>
+
+<p>getClassPathArchives的子类实现位于ExecutableArchiveLauncher：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">protected List&lt;Archive&gt; getClassPathArchives() throws Exception &#123;</span><br><span class="line">	List&lt;Archive&gt; archives = new ArrayList&lt;&gt;(</span><br><span class="line">			this.archive.getNestedArchives(this::isNestedArchive));</span><br><span class="line">	postProcessClassPathArchives(archives);</span><br><span class="line">	return archives;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<pre><code>this.archive位于ExecutableArchiveLauncher的构造器当中：</code></pre>  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">  public ExecutableArchiveLauncher() &#123;</span><br><span class="line">		try &#123;</span><br><span class="line">			this.archive = createArchive();</span><br><span class="line">		&#125;</span><br><span class="line">		catch (Exception ex) &#123;</span><br><span class="line">			throw new IllegalStateException(ex);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">  //createArchive方法的作用是返回我们要执行的jar文件的绝对路径(java -jar xxx.jar中 xxx.jar的绝对路径)：</span><br><span class="line">  protected final Archive createArchive() throws Exception &#123;</span><br><span class="line">  ProtectionDomain protectionDomain = getClass().getProtectionDomain();</span><br><span class="line">  CodeSource codeSource = protectionDomain.getCodeSource();</span><br><span class="line">  URI location = (codeSource != null) ? codeSource.getLocation().toURI() : null;</span><br><span class="line">  String path = (location != null) ? location.getSchemeSpecificPart() : null;</span><br><span class="line">  if (path == null) &#123;</span><br><span class="line">    throw new IllegalStateException(&quot;Unable to determine code source archive&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  File root = new File(path);</span><br><span class="line">  if (!root.exists()) &#123;</span><br><span class="line">    throw new IllegalStateException(</span><br><span class="line">        &quot;Unable to determine code source archive from &quot; + root);</span><br><span class="line">  &#125;</span><br><span class="line">  return (root.isDirectory() ? new ExplodedArchive(root)</span><br><span class="line">      : new JarFileArchive(root));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>然后【this.archive.getNestedArchives】是做的什么事情呢？<br>它Archive类里边</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Returns nested &#123;@link Archive&#125;s for entries that match the specified filter.</span><br><span class="line"> * @param filter the filter used to limit entries</span><br><span class="line"> * @return nested archives</span><br><span class="line"> * @throws IOException if nested archives cannot be read</span><br><span class="line"> */</span><br><span class="line"> 根据过滤器filter返回嵌套的归档文件</span><br><span class="line">List&lt;Archive&gt; getNestedArchives(EntryFilter filter) throws IOException;</span><br></pre></td></tr></table></figure>
+
+<p>getNestedArchives实现类JarFileArchive：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">	public List&lt;Archive&gt; getNestedArchives(EntryFilter filter) throws IOException &#123;</span><br><span class="line">		List&lt;Archive&gt; nestedArchives = new ArrayList&lt;&gt;();</span><br><span class="line">    // JarFileArchive实现了 Iterable&lt;Archive.Entry&gt;</span><br><span class="line">		for (Entry entry : this) &#123;</span><br><span class="line">			if (filter.matches(entry)) &#123;</span><br><span class="line">				nestedArchives.add(getNestedArchive(entry));</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		return Collections.unmodifiableList(nestedArchives);</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里我们就要看一下过滤器是过滤的那些归档，切到ExecutableArchiveLauncher的isNestedArchive：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">ExecutableArchiveLauncher的对isNestedArchive的抽象：</span><br><span class="line">/**</span><br><span class="line"> * Determine if the specified &#123;@link JarEntry&#125; is a nested item that should be added</span><br><span class="line"> * to the classpath. The method is called once for each entry.</span><br><span class="line"> * @param entry the jar entry</span><br><span class="line"> * @return &#123;@code true&#125; if the entry is a nested item (jar or folder)</span><br><span class="line"> */</span><br><span class="line"> 判断指定的JarEntry是不是一个嵌套的，如果是嵌套的需要添加到classpath下边，这个方法对于每个entry只被调用一次。</span><br><span class="line">protected abstract boolean isNestedArchive(Archive.Entry entry);</span><br><span class="line"></span><br><span class="line">JarLauncher的实现：</span><br><span class="line">@Override</span><br><span class="line">protected boolean isNestedArchive(Archive.Entry entry) &#123;</span><br><span class="line">  //如果是目录判断是不是BOOT-INF/classes/目录</span><br><span class="line">  if (entry.isDirectory()) &#123;</span><br><span class="line">    return entry.getName().equals(BOOT_INF_CLASSES);</span><br><span class="line">  &#125;</span><br><span class="line">  //如果是文件判断文件的前缀是不是BOOT-INF/lib/开头</span><br><span class="line">  return entry.getName().startsWith(BOOT_INF_LIB);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里做一下补充：规范要求，jar文件的里边的启动类，必须是位于目录的顶层结构中，启动类不能位于嵌套的jar里边。<br>我们看到jar包的org目录下边的JarLauncher是在顶层目录的结构里边，是可以被加载的，而BOOT-INF/lib/里边的jar属于嵌套的（FatJar），同样BOOT-INF/classes/里边的类<br>没有在jar目录的顶层结构同样无法加载执行，spring要想加载执行他们需要做一些工作，后续我们会介绍，其实是spring自定义了自己的类加载器去加载。<br>回到Launcher的launch方法</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">protected void launch(String[] args) throws Exception &#123;</span><br><span class="line">		JarFile.registerUrlProtocolHandler();</span><br><span class="line">		ClassLoader classLoader = createClassLoader(getClassPathArchives());</span><br><span class="line">		launch(args, getMainClass(), classLoader);</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>getClassPathArchives()得到集合要么是BOOT-INF/classes/或者BOOT-INF/lib/的目录或者是他们下边的class文件或者jar依赖文件，<br>紧接着我们进入createClassLoader方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Create a classloader for the specified archives.</span><br><span class="line"> * @param archives the archives</span><br><span class="line"> * @return the classloader</span><br><span class="line"> * @throws Exception if the classloader cannot be created</span><br><span class="line"> */</span><br><span class="line">// 为指定为归档文件创建类加载器，archives是我们拿到的所有的要加载的归档，返回一个spring定义的一个自定义加载器</span><br><span class="line">protected ClassLoader createClassLoader(List&lt;Archive&gt; archives) throws Exception &#123;</span><br><span class="line">  List&lt;URL&gt; urls = new ArrayList&lt;&gt;(archives.size());</span><br><span class="line">  for (Archive archive : archives) &#123;</span><br><span class="line">    urls.add(archive.getUrl());</span><br><span class="line">  &#125;</span><br><span class="line">  //将所有归档文件的url统一放在一个集合里边</span><br><span class="line">  return createClassLoader(urls.toArray(new URL[0]));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line">	 * Create a classloader for the specified URLs.</span><br><span class="line">	 * @param urls the URLs</span><br><span class="line">	 * @return the classloader</span><br><span class="line">	 * @throws Exception if the classloader cannot be created</span><br><span class="line">	 */</span><br><span class="line">   //为指定的url创建一个类加载器</span><br><span class="line">	protected ClassLoader createClassLoader(URL[] urls) throws Exception &#123;</span><br><span class="line">    //自定义类加载器需要指定父加载器，getClass()是Launcher.clas 得到Launcher类的类加载器，即appClassLoader，系统类加载器</span><br><span class="line">		return new LaunchedURLClassLoader(urls, getClass().getClassLoader());</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>LaunchedURLClassLoader继承了URLClassLoader：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Create a new &#123;@link LaunchedURLClassLoader&#125; instance.</span><br><span class="line"> * @param urls the URLs from which to load classes and resources</span><br><span class="line"> * @param parent the parent class loader for delegation</span><br><span class="line"> */</span><br><span class="line">public LaunchedURLClassLoader(URL[] urls, ClassLoader parent) &#123;</span><br><span class="line">   //直接调用了URLClassLoader的构造器</span><br><span class="line">	super(urls, parent);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>URLClassLoader的说明：<br>This class loader is used to load classes and resources from a search path of URLs referring to both JAR files and directories. Any URL that ends with a ‘/‘ is assumed to refer to a directory. Otherwise, the URL is assumed to refer to a JAR file which will be opened as needed.<br>The AccessControlContext of the thread that created the instance of URLClassLoader will be used when subsequently loading classes and resources.<br>The classes that are loaded are by default granted permission only to access the URLs specified when the URLClassLoader was created.<br>这个类加载器用来加载类和资源，这些资源是通过搜索一个jar文件或者一个目录，任何一个以“/”结尾的会认为是一个目录，否则会认为是一个jar文件。</p>
+<p>到现在【    ClassLoader classLoader = createClassLoader(getClassPathArchives());】得到了自定义的类加载器，接下来的【launch(args, getMainClass(), classLoader);】<br>进行加载，getMainClass()是用来找到我们自定义的含有main方法的class的名字，即com.twodragonlake.boot.MyApplication<br>我们看一下在ExecutableArchiveLauncher里边的实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">protected String getMainClass() throws Exception &#123;</span><br><span class="line">  //得到Manifest的封装</span><br><span class="line">  Manifest manifest = this.archive.getManifest();</span><br><span class="line">  String mainClass = null;</span><br><span class="line">  if (manifest != null) &#123;</span><br><span class="line">    //我们知道，在我们解压的bootJar出来的jar包里边有一个目录里是/META-INF/下边的文件是MANIFEST.MF，里边是key-value对，</span><br><span class="line">    // manifest.getMainAttributes()就是拿到所有的key-value对，这里取的是Start-Class，即“com.twodragonlake.boot.MyApplication”这个字符串</span><br><span class="line">    mainClass = manifest.getMainAttributes().getValue(&quot;Start-Class&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  if (mainClass == null) &#123;</span><br><span class="line">    throw new IllegalStateException(</span><br><span class="line">        &quot;No &apos;Start-Class&apos; manifest entry specified in &quot; + this);</span><br><span class="line">  &#125;</span><br><span class="line">  return mainClass;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>返回到我们的主流承诺，进入到Launcher.launch()方法的实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Launch the application given the archive file and a fully configured classloader.</span><br><span class="line"> * @param args the incoming arguments</span><br><span class="line"> * @param mainClass the main class to run</span><br><span class="line"> * @param classLoader the classloader</span><br><span class="line"> * @throws Exception if the launch fails</span><br><span class="line"> */</span><br><span class="line">protected void launch(String[] args, String mainClass, ClassLoader classLoader)</span><br><span class="line">    throws Exception &#123;</span><br><span class="line">      //当前线程的上下文类加载器模式是系统类加载器，此处将线程山下文类加载器设置为spring自定义的LaunchedURLClassLoader</span><br><span class="line">      //此处是set了LaunchedURLClassLoader，后边在某个时刻一定会get出来使用，去加载类，惯用套路</span><br><span class="line">  Thread.currentThread().setContextClassLoader(classLoader);</span><br><span class="line">  createMainMethodRunner(mainClass, args, classLoader).run();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * Create the &#123;@code MainMethodRunner&#125; used to launch the application.</span><br><span class="line"> * @param mainClass the main class</span><br><span class="line"> * @param args the incoming arguments</span><br><span class="line"> * @param classLoader the classloader</span><br><span class="line"> * @return the main method runner</span><br><span class="line"> */</span><br><span class="line"> //创建一个MainMethodRunner用来驱动运用</span><br><span class="line">protected MainMethodRunner createMainMethodRunner(String mainClass, String[] args,</span><br><span class="line">    ClassLoader classLoader) &#123;</span><br><span class="line">  return new MainMethodRunner(mainClass, args);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>MainMethodRunner的doc：<br>  Utility class that is used by Launchers to call a main method. The class containing the main method is loaded using the thread context class loader.<br>  工具类，用来执行一个main方法，包含main方法的类是由线程上下文类加载器加载（线程山下文类加载器是LaunchedURLClassLoader）</p>
+<p>构造函数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">public MainMethodRunner(String mainClass, String[] args) &#123;</span><br><span class="line">  //我们应用的含有main方法的启动类的权限定名，即，com.twodragonlake.boot.MyApplication</span><br><span class="line">  this.mainClassName = mainClass;</span><br><span class="line">  //参数</span><br><span class="line">  this.args = (args != null) ? args.clone() : null;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接下来是重点，我们创建了一个MainMethodRunner，之后执行的是它的run方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">public void run() throws Exception &#123;</span><br><span class="line">   //获取线程上下文类加载（LaunchedURLClassLoader），然后执行LaunchedURLClassLoader的loadClass方法，参数this.mainClassName是com.twodragonlake.boot.MyApplication</span><br><span class="line">   //即有自定义的类加载器LaunchedURLClassLoader加载我们自定义的启动类com.twodragonlake.boot.MyApplication。</span><br><span class="line">	Class&lt;?&gt; mainClass = Thread.currentThread().getContextClassLoader()</span><br><span class="line">			.loadClass(this.mainClassName);</span><br><span class="line">       //得到com.twodragonlake.boot.MyApplication的main方法</span><br><span class="line">	Method mainMethod = mainClass.getDeclaredMethod(&quot;main&quot;, String[].class);</span><br><span class="line">   //执行com.twodragonlake.boot.MyApplication的main方法。invoke方法之所以传递的第一个参数是null，是因为main方法是一个static的，不属于某个对象。</span><br><span class="line">	mainMethod.invoke(null, new Object[] &#123; this.args &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里有个点就是 其实我们的com.twodragonlake.boot.MyApplication的main方法，不用非得名字是main，只不过是spring规定的是main，因为spring的代码里边写死是main，spring之所以规定方法名字必须是main的原因<br>是我们可能使用idea直接右单击运行我们的应用，，所以2者结合进行兼容，规定名字必须是main。</p>
+<h3 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h3><p>我们修改MyApplication的main方法加入一行打印MyApplication的加载器的代码；</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">public class MyApplication &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">      //打印MyApplication的类加载器</span><br><span class="line">        System.out.println(&quot;MyApplication classloader: &quot;+MyApplication.class.getClassLoader());</span><br><span class="line">        SpringApplication.run(MyApplication.class,args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>使用如下两种方式运行：</p>
+<ul>
+<li>直接用idea右单击运行main方法</li>
+<li>使用gradle bootJar打成jar包，然后使用 java -jar spring_lecture-1.0-SNAPSHOT.jar 运行</li>
+</ul>
+<p>他们打印的结果是一样的吗？<br>使用idea打印的结果是：<br>MyApplication classloader: sun.misc.Launcher$AppClassLoader@18b4aac2<br>即使用应用类加载器加载的。<br>使用java -jar spring_lecture-1.0-SNAPSHOT.jar运行的结果是:<br>MyApplication classloader: org.springframework.boot.loader.LaunchedURLClassLoader@5197848c<br>使用LaunchedURLClassLoader加载的。</p>
+<p>辅助同类理解：<a href="https://incoder.org/2019/07/05/springboot2/#.XSIEKB259cQ.wechat" target="_blank" rel="noopener">https://incoder.org/2019/07/05/springboot2/#.XSIEKB259cQ.wechat</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/" title="spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解">https://ceaser.wang/2019/06/07/spring_boot_and_cloud/spring_boot_cloud(2)Spring_Boot打包文件结构深入分析源码讲解/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/打包文件/" rel="tag"><i class="fa fa-tag"></i> 打包文件</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/06/07/jvm原理（47）G1垃圾收集器系列深入讲解/" rel="prev" title="jvm原理（47）G1垃圾收集器系列深入讲解">
+      <i class="fa fa-chevron-left"></i> jvm原理（47）G1垃圾收集器系列深入讲解
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/06/08/spring_boot_and_cloud/spring_boot_cloud(3)JDWP远程调试详解以及调试spring-boot-loader的启动与加载全流程/" rel="next" title="spring_boot_cloud(3)JDWP远程调试详解以及调试spring-boot-loader的启动与加载全流程">
+      spring_boot_cloud(3)JDWP远程调试详解以及调试spring-boot-loader的启动与加载全流程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#gradle-的打包task"><span class="nav-number">1.</span> <span class="nav-text">gradle 的打包task</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#jar包目录结构"><span class="nav-number">2.</span> <span class="nav-text">jar包目录结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JarLauncher的继承体系结构与源码分析："><span class="nav-number">3.</span> <span class="nav-text">JarLauncher的继承体系结构与源码分析：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#验证"><span class="nav-number">4.</span> <span class="nav-text">验证</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

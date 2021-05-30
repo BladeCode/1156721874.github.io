@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="10.1事物处理拦截器的配置首先看一下建立事物处理对象的时序图：">
+<meta name="keywords" content="spring">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SPRING技术内幕-笔记（十）spring声明式事物处理">
+<meta property="og:url" content="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="10.1事物处理拦截器的配置首先看一下建立事物处理对象的时序图：">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/20150714170841112.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/20150715155836118.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.245Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SPRING技术内幕-笔记（十）spring声明式事物处理">
+<meta name="twitter:description" content="10.1事物处理拦截器的配置首先看一下建立事物处理对象的时序图：">
+<meta name="twitter:image" content="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/20150714170841112.png">
+
+<link rel="canonical" href="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>SPRING技术内幕-笔记（十）spring声明式事物处理 | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          SPRING技术内幕-笔记（十）spring声明式事物处理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-09-28 19:55:57" itemprop="dateCreated datePublished" datetime="2018-09-28T19:55:57+00:00">2018-09-28</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/spring/" itemprop="url" rel="index"><span itemprop="name">spring</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/" class="post-meta-item leancloud_visitors" data-flag-title="SPRING技术内幕-笔记（十）spring声明式事物处理" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><strong>10.1事物处理拦截器的配置</strong><br>首先看一下建立事物处理对象的时序图：<br><img src="20150714170841112.png" alt="这里写图片描述"></p>
+<a id="more"></a>
+
+<p>首先从TransactionProxyFactoryBean 的createMainInterceptor()方法开始：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">//TransactionInterceptor 封装了AOP的事物处理的实现，通过依赖注入设置进来</span><br><span class="line">	private final TransactionInterceptor transactionInterceptor = new TransactionInterceptor();</span><br><span class="line"></span><br><span class="line">	private Pointcut pointcut;</span><br><span class="line">		public void setTransactionAttributes(Properties transactionAttributes) &#123;</span><br><span class="line">		this.transactionInterceptor.setTransactionAttributes(transactionAttributes);</span><br><span class="line">	&#125;</span><br><span class="line">//通过依赖注入的PlatformTransactionManager</span><br><span class="line">		public void setTransactionManager(PlatformTransactionManager transactionManager) &#123;</span><br><span class="line">		this.transactionInterceptor.setTransactionManager(transactionManager);</span><br><span class="line">	&#125;</span><br><span class="line">//创建SPringAOP处理的advisor</span><br><span class="line">	protected Object createMainInterceptor() &#123;</span><br><span class="line">		this.transactionInterceptor.afterPropertiesSet();</span><br><span class="line">		if (this.pointcut != null) &#123;</span><br><span class="line">		//使用默认的DefaultPointcutAdvisor作为默认的通知器，并设置拦截器</span><br><span class="line">			return new DefaultPointcutAdvisor(this.pointcut, this.transactionInterceptor);</span><br><span class="line">		&#125;</span><br><span class="line">		else &#123;</span><br><span class="line">			// Rely on default pointcut.如果没有配置pointcut 就用TransactionAttributeSourceAdvisor作为通知器，并设置transactionInterceptor为拦截器</span><br><span class="line">			return new TransactionAttributeSourceAdvisor(this.transactionInterceptor);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>值得注意的是createMainInterceptor()是在bean完成依赖注入的时候通过InitializingBean方法调用的。<br>TransactionProxyFactoryBean继承了AbstractSingletonProxyFactoryBean，而AbstractSingletonProxyFactoryBean实现了InitializingBean，于是就会重写InitializingBean的afterPropertiesSet()方法，这个方法实例化了一个proxyFactory，建立起 SPringAOP的应用，在这里，会为这个proxyfactory设置通知，目标对象，并最终返回proxy代理对象 。<br>AbstractSingletonProxyFactoryBean的afterPropertiesSet方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line">public void afterPropertiesSet() &#123;</span><br><span class="line">		if (this.target == null) &#123;</span><br><span class="line">			throw new IllegalArgumentException(&quot;Property &apos;target&apos; is required&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		if (this.target instanceof String) &#123;</span><br><span class="line">			throw new IllegalArgumentException(&quot;&apos;target&apos; needs to be a bean reference, not a bean name as value&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		if (this.proxyClassLoader == null) &#123;</span><br><span class="line">			this.proxyClassLoader = ClassUtils.getDefaultClassLoader();</span><br><span class="line">		&#125;</span><br><span class="line">		//TransactionProxyFactoryBean使用ProxyFactory 完成AOP的年基本功能，ProxyFactory 提供代理对象，并将transactionInterceptor设置为target的拦截器</span><br><span class="line">		ProxyFactory proxyFactory = new ProxyFactory();</span><br><span class="line"></span><br><span class="line">		if (this.preInterceptors != null) &#123;</span><br><span class="line">			for (Object interceptor : this.preInterceptors) &#123;</span><br><span class="line">				proxyFactory.addAdvisor(this.advisorAdapterRegistry.wrap(interceptor));</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		// Add the main interceptor (typically an Advisor).</span><br><span class="line">		spring加入通知器的地方，可以加入2种通知器，分别是DefaultPointcutAdvisor、TransactionAttributeSourceAdvisor，Proxyfactory的基类，ADvisedSupport中，维护了一个用来持有advice的linkedList，通过对这个list的增删改等操作，用来管理配置给Proxyfactory的通知器</span><br><span class="line">		proxyFactory.addAdvisor(this.advisorAdapterRegistry.wrap(createMainInterceptor()));</span><br><span class="line"></span><br><span class="line">		if (this.postInterceptors != null) &#123;</span><br><span class="line">			for (Object interceptor : this.postInterceptors) &#123;</span><br><span class="line">				proxyFactory.addAdvisor(this.advisorAdapterRegistry.wrap(interceptor));</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		proxyFactory.copyFrom(this);</span><br><span class="line"> //创建AOP的目标源</span><br><span class="line">		TargetSource targetSource = createTargetSource(this.target);</span><br><span class="line">		proxyFactory.setTargetSource(targetSource);</span><br><span class="line"></span><br><span class="line">		if (this.proxyInterfaces != null) &#123;</span><br><span class="line">		//设置使用哪个接口作为代理</span><br><span class="line">			proxyFactory.setInterfaces(this.proxyInterfaces);</span><br><span class="line">		&#125;</span><br><span class="line">		else if (!isProxyTargetClass()) &#123;</span><br><span class="line">			// Rely on AOP infrastructure to tell us what interfaces to proxy.</span><br><span class="line">			proxyFactory.setInterfaces(</span><br><span class="line">					ClassUtils.getAllInterfacesForClass(targetSource.getTargetClass(), this.proxyClassLoader));</span><br><span class="line">		&#125;</span><br><span class="line">//设置代理对象</span><br><span class="line">		this.proxy = proxyFactory.getProxy(this.proxyClassLoader);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">//至于怎创建的代理对象要到proxyFactory看看：</span><br><span class="line">	public Object getProxy(ClassLoader classLoader) &#123;</span><br><span class="line">		return createAopProxy().getProxy(classLoader);</span><br><span class="line">	&#125;</span><br><span class="line">	createAopProxy（）在其基类ProxyCreatorSupport中实现</span><br><span class="line">createAopProxy():</span><br><span class="line">	protected final synchronized AopProxy createAopProxy() &#123;</span><br><span class="line">		if (!this.active) &#123;</span><br><span class="line">			activate();</span><br><span class="line">		&#125;</span><br><span class="line">		//使用 DefaultAopProxyfactory来创建AopProxy对象，proxyFactory本身是ProxyConfig的子类，所以使用this</span><br><span class="line">		return getAopProxyFactory().createAopProxy(this);</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>10.2事物处理配置的读入</strong><br>在AOP配置完成的基础上，从TransactionAttributeSourceAdvisor的实现为入口，了解具体的事物配置属性是如何读取的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">//Interceptor使用之前介绍的transactionInterceptor</span><br><span class="line">	private TransactionInterceptor transactionInterceptor;</span><br><span class="line">//对于pointcut ，使用其内部类TransactionAttributeSourcePointcut，</span><br><span class="line">	private final TransactionAttributeSourcePointcut pointcut = new TransactionAttributeSourcePointcut() &#123;</span><br><span class="line">		@Override</span><br><span class="line">		//使用transactionInterceptor得到事物配置的属性，在对proxy的方法进行调用时，会用到这些属性</span><br><span class="line">		protected TransactionAttributeSource getTransactionAttributeSource() &#123;</span><br><span class="line">			return (transactionInterceptor != null ? transactionInterceptor.getTransactionAttributeSource() : null);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>TransactionAttributeSourcePointcut这个切点实现了StaticMethodMatcherPointcut，有一个matches(Method method, Class targetClass)函数，在此函数中调用getTransactionAttributeSource得到配置属性，并且判断是否当前方法被拦截：<br>TransactionAttributeSourcePointcut的matches</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">public boolean matches(Method method, Class targetClass) &#123;</span><br><span class="line">//调用transactionInterceptor的getTransactionAttributeSource()，见TransactionAttributeSourcePointcut 得内部类TransactionAttributeSourcePointcut的匿名实现。</span><br><span class="line">	TransactionAttributeSource tas = getTransactionAttributeSource();</span><br><span class="line">	//判断是否是被拦截的方法</span><br><span class="line">	return (tas == null || tas.getTransactionAttribute(method, targetClass) != null);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个TransactionAttributeSource是在完成依赖注入的时候配置的，在transactionInterceptor的基类TransactionAspectSupport中注入实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">public void setTransactionAttributes(Properties transactionAttributes) &#123;</span><br><span class="line">//实际使用的是NameMatchTransactionAttributeSource，然后将事物配置属性设置到     </span><br><span class="line">//NameMatchTransactionAttributeSource。</span><br><span class="line">	NameMatchTransactionAttributeSource tas = new NameMatchTransactionAttributeSource();</span><br><span class="line">	tas.setProperties(transactionAttributes);</span><br><span class="line">	this.transactionAttributeSource = tas;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到读取和匹配事物配置属性的是NameMatchTransactionAttributeSource ，这个类将transactionAttributes通过调用setProperties方法把调用的方法名为key，放到namemap中，在应用调用目标方法的时候，因为目标方法已经被TransactionProxyFactoryBean代理，所以TransactionProxyFactoryBean需要判断这个调用方法是否是事物方法，这个判断的实现是通过NameMatchTransactionAttributeSource 中能否为这个调用返回事物属性来完成的，具体的实现是这样的：首先，以调用方法名为索引在namemap中查找相应的事物处理属性值，如果能够找到，那么就说明该调用方法和事物方法是直接对应的，如果你找不到，就用正则表达式的方式模糊匹配。意味着，可以使用通配符的方式指定要拦截的方法。返回的属性封装在TransactionAttribute 中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"> //配置事物属性的方法</span><br><span class="line">	public void setProperties(Properties transactionAttributes) &#123;</span><br><span class="line">		TransactionAttributeEditor tae = new TransactionAttributeEditor();</span><br><span class="line">		Enumeration propNames = transactionAttributes.propertyNames();</span><br><span class="line">		while (propNames.hasMoreElements()) &#123;</span><br><span class="line">			String methodName = (String) propNames.nextElement();</span><br><span class="line">			String value = transactionAttributes.getProperty(methodName);</span><br><span class="line">			tae.setAsText(value);</span><br><span class="line">			TransactionAttribute attr = (TransactionAttribute) tae.getValue();</span><br><span class="line">			addTransactionalMethod(methodName, attr);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">//将被拦截的方法的名字为key，配置的属性为value放入到nameMap中去。</span><br><span class="line">	public void addTransactionalMethod(String methodName, TransactionAttribute attr) &#123;</span><br><span class="line">		if (logger.isDebugEnabled()) &#123;</span><br><span class="line">			logger.debug(&quot;Adding transactional method [&quot; + methodName + &quot;] with attribute [&quot; + attr + &quot;]&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		this.nameMap.put(methodName, attr);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">//根据方法名字活模式取配置的事物属性</span><br><span class="line">	public TransactionAttribute getTransactionAttribute(Method method, Class&lt;?&gt; targetClass) &#123;</span><br><span class="line">		// look for direct name match</span><br><span class="line">		String methodName = method.getName();</span><br><span class="line">		//以名字为key</span><br><span class="line">		TransactionAttribute attr = this.nameMap.get(methodName);</span><br><span class="line"></span><br><span class="line">		if (attr == null) &#123;</span><br><span class="line">			// Look for most specific name match.</span><br><span class="line">			String bestNameMatch = null;</span><br><span class="line">			for (String mappedName : this.nameMap.keySet()) &#123;</span><br><span class="line">			//isMatch使用模糊或者通配符的方式匹配</span><br><span class="line">				if (isMatch(methodName, mappedName) &amp;&amp;</span><br><span class="line">						(bestNameMatch == null || bestNameMatch.length() &lt;= mappedName.length())) &#123;</span><br><span class="line">					attr = this.nameMap.get(mappedName);</span><br><span class="line">					bestNameMatch = mappedName;</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">//返回取得的属性值</span><br><span class="line">		return attr;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>10.3事物处理拦截器的设计与实现<br>TransactionProxyFactoryBean代理得到代理对象，通过调用getObject()得到，对目标方法的调用，TransactionProxyFactoryBean不会直接调用而是经过拦截器的拦截：<br>getObject方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">public Object getObject() &#123;</span><br><span class="line">	if (this.proxy == null) &#123;</span><br><span class="line">		throw new FactoryBeanNotInitializedException();</span><br><span class="line">	&#125;</span><br><span class="line">	 //proxy已经配置好事物拦截器配置</span><br><span class="line">	return this.proxy;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对AOP代理起到作用，是用到TransactionInterceptor的回调方法，invoke方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br></pre></td><td class="code"><pre><span class="line">	public Object invoke(final MethodInvocation invocation) throws Throwable &#123;</span><br><span class="line">		// Work out the target class: may be &lt;code&gt;null&lt;/code&gt;.</span><br><span class="line">		// The TransactionAttributeSource should be passed the target class</span><br><span class="line">		// as well as the method, which may be from an interface.</span><br><span class="line">		 //目标对象</span><br><span class="line">		Class&lt;?&gt; targetClass = (invocation.getThis() != null ? AopUtils.getTargetClass(invocation.getThis()) : null);</span><br><span class="line"></span><br><span class="line">		// If the transaction attribute is null, the method is non-transactional.</span><br><span class="line">		//取得事物的配置属性，通过TransactionAttributeSource得到</span><br><span class="line">		final TransactionAttribute txAttr =</span><br><span class="line">				getTransactionAttributeSource().getTransactionAttribute(invocation.getMethod(), targetClass);</span><br><span class="line">//根据TransactionProxyFactoryBean的配置信息获取具体的事物处理器</span><br><span class="line">		final PlatformTransactionManager tm = determineTransactionManager(txAttr);</span><br><span class="line">		final String joinpointIdentification = methodIdentification(invocation.getMethod(), targetClass);</span><br><span class="line"></span><br><span class="line">// 这里获取不同的PlatformTransactionManager ，因为回调方式不同，CallbackPreferringPlatformTransactionManager的需要回调函数实现事物的回调与提交，而非CallbackPreferringPlatformTransactionManager不需要，DatasourceTransactionManager就不是CallbackPreferringPlatformTransactionManager</span><br><span class="line">		if (txAttr == null || !(tm instanceof CallbackPreferringPlatformTransactionManager)) &#123;</span><br><span class="line">			// Standard transaction demarcation with getTransaction and commit/rollback calls.</span><br><span class="line">			 //创建事物，并且把创建过程得到的信息放到TransactionInfo 中去，TransactionInfo 是封装事物状态的类</span><br><span class="line">			TransactionInfo txInfo = createTransactionIfNecessary(tm, txAttr, joinpointIdentification);</span><br><span class="line">			Object retVal = null;</span><br><span class="line">			try &#123;</span><br><span class="line">				// This is an around advice: Invoke the next interceptor in the chain.</span><br><span class="line">				// This will normally result in a target object being invoked.</span><br><span class="line">				//继续走拦截器链，知道目标方法被调用。</span><br><span class="line">				retVal = invocation.proceed();</span><br><span class="line">			&#125;</span><br><span class="line">			catch (Throwable ex) &#123;</span><br><span class="line">				// target invocation exception</span><br><span class="line">				//如果调用过程出现异常需要根据具体情况判断是提交或者回滚。</span><br><span class="line">				completeTransactionAfterThrowing(txInfo, ex);</span><br><span class="line">				throw ex;</span><br><span class="line">			&#125;</span><br><span class="line">			finally &#123;</span><br><span class="line">			 //把线程绑定的TransactionInfo 置为oldTransactionInfo</span><br><span class="line">				cleanupTransactionInfo(txInfo);</span><br><span class="line">			&#125;</span><br><span class="line">			 //使用事物处理器对事物进行提交</span><br><span class="line">			commitTransactionAfterReturning(txInfo);</span><br><span class="line">			return retVal;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		else &#123;</span><br><span class="line">			// It&apos;s a CallbackPreferringPlatformTransactionManager: pass a TransactionCallback in.</span><br><span class="line">			//使用回调的方式</span><br><span class="line">			try &#123;</span><br><span class="line">				Object result = ((CallbackPreferringPlatformTransactionManager) tm).execute(txAttr,</span><br><span class="line">						new TransactionCallback&lt;Object&gt;() &#123;</span><br><span class="line">							public Object doInTransaction(TransactionStatus status) &#123;</span><br><span class="line">								TransactionInfo txInfo = prepareTransactionInfo(tm, txAttr, joinpointIdentification, status);</span><br><span class="line">								try &#123;</span><br><span class="line">									return invocation.proceed();</span><br><span class="line">								&#125;</span><br><span class="line">								catch (Throwable ex) &#123;</span><br><span class="line">									if (txAttr.rollbackOn(ex)) &#123;</span><br><span class="line">										// A RuntimeException: will lead to a rollback.</span><br><span class="line">										//导致事物回滚</span><br><span class="line">										if (ex instanceof RuntimeException) &#123;</span><br><span class="line">											throw (RuntimeException) ex;</span><br><span class="line">										&#125;</span><br><span class="line">										else &#123;</span><br><span class="line">											throw new ThrowableHolderException(ex);</span><br><span class="line">										&#125;</span><br><span class="line">									&#125;</span><br><span class="line">									else &#123;</span><br><span class="line">										// A normal return value: will lead to a commit.</span><br><span class="line">										//正常的处理，进行事物提交</span><br><span class="line">										return new ThrowableHolder(ex);</span><br><span class="line">									&#125;</span><br><span class="line">								&#125;</span><br><span class="line">								finally &#123;</span><br><span class="line">									cleanupTransactionInfo(txInfo);</span><br><span class="line">								&#125;</span><br><span class="line">							&#125;</span><br><span class="line">						&#125;);</span><br><span class="line"></span><br><span class="line">				// Check result: It might indicate a Throwable to rethrow.</span><br><span class="line">				if (result instanceof ThrowableHolder) &#123;</span><br><span class="line">					throw ((ThrowableHolder) result).getThrowable();</span><br><span class="line">				&#125;</span><br><span class="line">				else &#123;</span><br><span class="line">					return result;</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			catch (ThrowableHolderException ex) &#123;</span><br><span class="line">				throw ex.getCause();</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>事物提交时序图：<br><img src="20150715155836118.png" alt="这里写图片描述"><br>invoke方法是AOP和spring事物处理的桥梁，接下来就是事物处理的实现。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/" title="SPRING技术内幕-笔记（十）spring声明式事物处理">https://ceaser.wang/2018/09/28/SPRING技术内幕-笔记（十）spring声明式事物处理/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/spring/" rel="tag"><i class="fa fa-tag"></i> spring</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/09/28/SPRING技术内幕-笔记（九）SpringMVC视图的呈现/" rel="prev" title="SPRING技术内幕-笔记（九）SpringMVC视图的呈现">
+      <i class="fa fa-chevron-left"></i> SPRING技术内幕-笔记（九）SpringMVC视图的呈现
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/09/28/SPRING技术内幕-笔记（十一）spring事物处理的设计与实现/" rel="next" title="SPRING技术内幕-笔记（十一）spring事物处理的设计与实现">
+      SPRING技术内幕-笔记（十一）spring事物处理的设计与实现 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

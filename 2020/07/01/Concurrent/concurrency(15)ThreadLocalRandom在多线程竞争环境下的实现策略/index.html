@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="随机数我们在实际开发过程中，不可避免的会使用随机数，jdk提供了Random类用来实现随机数的生成： 12345678public class MyTest5 &amp;#123;    public static void main(String[] args) &amp;#123;        Random random = new Random();        IntStream.range(0,10">
+<meta name="keywords" content="ThreadLocalRandom">
+<meta property="og:type" content="article">
+<meta property="og:title" content="concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略">
+<meta property="og:url" content="https://ceaser.wang/2020/07/01/Concurrent/concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="随机数我们在实际开发过程中，不可避免的会使用随机数，jdk提供了Random类用来实现随机数的生成： 12345678public class MyTest5 &amp;#123;    public static void main(String[] args) &amp;#123;        Random random = new Random();        IntStream.range(0,10">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.229Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略">
+<meta name="twitter:description" content="随机数我们在实际开发过程中，不可避免的会使用随机数，jdk提供了Random类用来实现随机数的生成： 12345678public class MyTest5 &amp;#123;    public static void main(String[] args) &amp;#123;        Random random = new Random();        IntStream.range(0,10">
+
+<link rel="canonical" href="https://ceaser.wang/2020/07/01/Concurrent/concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略 | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2020/07/01/Concurrent/concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-07-01 21:05:00" itemprop="dateCreated datePublished" datetime="2020-07-01T21:05:00+00:00">2020-07-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/concurrency/" itemprop="url" rel="index"><span itemprop="name">concurrency</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2020/07/01/Concurrent/concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略/" class="post-meta-item leancloud_visitors" data-flag-title="concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2020/07/01/Concurrent/concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/07/01/Concurrent/concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="随机数"><a href="#随机数" class="headerlink" title="随机数"></a>随机数</h3><p>我们在实际开发过程中，不可避免的会使用随机数，jdk提供了Random类用来实现随机数的生成：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public class MyTest5 &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        Random random = new Random();</span><br><span class="line">        IntStream.range(0,10).forEach(i -&gt; &#123;</span><br><span class="line">            System.out.println(random.nextInt(10));</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<a id="more"></a>
+<p>看一下Random的nextInt：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">public class Random implements java.io.Serializable &#123;</span><br><span class="line">  private final AtomicLong seed;</span><br><span class="line"></span><br><span class="line">  public int nextInt(int bound) &#123;</span><br><span class="line">      if (bound &lt;= 0)</span><br><span class="line">          throw new IllegalArgumentException(BadBound);</span><br><span class="line"></span><br><span class="line">      int r = next(31);</span><br><span class="line">      int m = bound - 1;</span><br><span class="line">      if ((bound &amp; m) == 0)  // i.e., bound is a power of 2</span><br><span class="line">          r = (int)((bound * (long)r) &gt;&gt; 31);</span><br><span class="line">      else &#123;</span><br><span class="line">          for (int u = r;</span><br><span class="line">               u - (r = u % bound) + m &lt; 0;</span><br><span class="line">               u = next(31))</span><br><span class="line">              ;</span><br><span class="line">      &#125;</span><br><span class="line">      return r;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>每次生成随机数的时候，都会生成一个种子，然后使用这个种子再去做一些运算得到的结果作为随机数的返回结果，<br>nextInt当中的next方法就是我了得到种子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">protected int next(int bits) &#123;</span><br><span class="line">    long oldseed, nextseed;</span><br><span class="line">    //this.seed是原始的种子，是一个原子性的</span><br><span class="line">    AtomicLong seed = this.seed;</span><br><span class="line">    do &#123;</span><br><span class="line">        oldseed = seed.get();</span><br><span class="line">        //对种子的生成使用cas的方式进行更新</span><br><span class="line">        nextseed = (oldseed * multiplier + addend) &amp; mask;</span><br><span class="line">    &#125; while (!seed.compareAndSet(oldseed, nextseed));</span><br><span class="line">    return (int)(nextseed &gt;&gt;&gt; (48 - bits));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>老的种子被更新后，原来的种子的引用重新指向新的种子。<br>在多线程的情况下，保证了每个线程得到的种子都是不同的，在正确性上是没有任何问题的，但是问题是这样做的性能是很差的，当线程非常多的时候，会有大量的cas，接下来 就是ThreadLocalRandom登场的时候了。</p>
+<h3 id="ThreadLocalRandom"><a href="#ThreadLocalRandom" class="headerlink" title="ThreadLocalRandom"></a>ThreadLocalRandom</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">public class MyTest5 &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">      ThreadLocalRandom threadLocalRandom = ThreadLocalRandom.current();</span><br><span class="line">      IntStream.range(0,10).forEach(i -&gt; &#123;</span><br><span class="line">          System.out.println(threadLocalRandom.nextInt(10));</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>A random number generator isolated to the current thread. Like the global Random generator used by the Math class, a ThreadLocalRandom is initialized with an internally generated seed that may not otherwise be modified. When applicable, use of ThreadLocalRandom rather than shared Random objects in concurrent programs will typically encounter much less overhead and contention. Use of ThreadLocalRandom is particularly appropriate when multiple tasks (for example, each a ForkJoinTask) use random numbers in parallel in thread pools.<br>一个线程隔离的随机数生成器。就像全局的生成器一样被Math类所使用的。ThreadLocalRandom也是通过内部的种子生成器来初始化的，但是不能被其他的线程修改，更多的可能下，在并发的情况下，使用ThreadLocalRandom比共享的Random，特别是在ForkJoinTask这种情况当中，会表现出很好的性能。</p>
+<p>ThreadLocalRandom只在一个线程里边使用，不会出现线程的切换。</p>
+<p>对于一个随机数生成器来说，有2个要素需要考量：</p>
+<ol>
+<li>随机数生成器的种子</li>
+<li>具体的随机数生成算法（函数）</li>
+</ol>
+<p>对于ThreadLocalRandom来说，器随机数生成器的种子是存放在每个线程的ThreadLocal中的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line">public class ThreadLocalRandom extends Random &#123;</span><br><span class="line">  ...</span><br><span class="line">    // 在同一个jvm 应用里边只有一个ThreadLocalRandom实例</span><br><span class="line">    static final ThreadLocalRandom instance = new ThreadLocalRandom();</span><br><span class="line">    public static ThreadLocalRandom current() &#123;</span><br><span class="line">    if (UNSAFE.getInt(Thread.currentThread(), PROBE) == 0)</span><br><span class="line">        localInit();</span><br><span class="line">        return instance;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public int nextInt(int bound) &#123;</span><br><span class="line">      if (bound &lt;= 0)</span><br><span class="line">          throw new IllegalArgumentException(BadBound);</span><br><span class="line">      int r = mix32(nextSeed());</span><br><span class="line">      int m = bound - 1;</span><br><span class="line">      if ((bound &amp; m) == 0) // power of two</span><br><span class="line">          r &amp;= m;</span><br><span class="line">      else &#123; // reject over-represented candidates</span><br><span class="line">          for (int u = r &gt;&gt;&gt; 1;</span><br><span class="line">               u + m - (r = u % bound) &lt; 0;</span><br><span class="line">               u = mix32(nextSeed()) &gt;&gt;&gt; 1)</span><br><span class="line">              ;</span><br><span class="line">      &#125;</span><br><span class="line">      return r;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    final long nextSeed() &#123;</span><br><span class="line">        Thread t; long r; // read and update per-thread seed</span><br><span class="line">        //对当前线程进行操作更新</span><br><span class="line">        UNSAFE.putLong(t = Thread.currentThread(), SEED,</span><br><span class="line">                       r = UNSAFE.getLong(t, SEED) + GAMMA);</span><br><span class="line">        return r;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // Unsafe mechanics</span><br><span class="line">    private static final sun.misc.Unsafe UNSAFE;</span><br><span class="line">    private static final long SEED;</span><br><span class="line">    private static final long PROBE;</span><br><span class="line">    private static final long SECONDARY;</span><br><span class="line">    static &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            UNSAFE = sun.misc.Unsafe.getUnsafe();</span><br><span class="line">            Class&lt;?&gt; tk = Thread.class;</span><br><span class="line">            //对种子的更新是修改的Thread类里边的成员变量</span><br><span class="line">            SEED = UNSAFE.objectFieldOffset</span><br><span class="line">                (tk.getDeclaredField(&quot;threadLocalRandomSeed&quot;));</span><br><span class="line">            PROBE = UNSAFE.objectFieldOffset</span><br><span class="line">                (tk.getDeclaredField(&quot;threadLocalRandomProbe&quot;));</span><br><span class="line">            SECONDARY = UNSAFE.objectFieldOffset</span><br><span class="line">                (tk.getDeclaredField(&quot;threadLocalRandomSecondarySeed&quot;));</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            throw new Error(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Thread类的部分代码:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">/** The current seed for a ThreadLocalRandom */</span><br><span class="line">@sun.misc.Contended(&quot;tlr&quot;)</span><br><span class="line">long threadLocalRandomSeed;</span><br><span class="line"></span><br><span class="line">/** Probe hash value; nonzero if threadLocalRandomSeed initialized */</span><br><span class="line">@sun.misc.Contended(&quot;tlr&quot;)</span><br><span class="line">int threadLocalRandomProbe;</span><br><span class="line"></span><br><span class="line">/** Secondary seed isolated from public ThreadLocalRandom sequence */</span><br><span class="line">@sun.misc.Contended(&quot;tlr&quot;)</span><br><span class="line">int threadLocalRandomSecondarySeed;</span><br></pre></td></tr></table></figure>
+
+<p>我们发现Thread类里边的threadLocalRandomSeed、threadLocalRandomProbe、threadLocalRandomProbe都是原生类型的long，而在Random里边的AtomicLong类型。因为threadLocalRandomSeed、threadLocalRandomProbe、threadLocalRandomProbe都是定义在线程里边的，不会发生多线程并发的问题。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2020/07/01/Concurrent/concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略/" title="concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略">https://ceaser.wang/2020/07/01/Concurrent/concurrency(15)ThreadLocalRandom在多线程竞争环境下的实现策略/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/ThreadLocalRandom/" rel="tag"><i class="fa fa-tag"></i> ThreadLocalRandom</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/06/30/Concurrent/concurrency(14)CompletionService/" rel="prev" title="concurrency(14)CompletionService">
+      <i class="fa fa-chevron-left"></i> concurrency(14)CompletionService
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/07/02/spring_core/spring_core(1)EnvironmentBuildAndExecuteProcessParse/" rel="next" title="spring_core(1)EnvironmentBuildAndExecuteProcessParse">
+      spring_core(1)EnvironmentBuildAndExecuteProcessParse <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#随机数"><span class="nav-number">1.</span> <span class="nav-text">随机数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ThreadLocalRandom"><span class="nav-number">2.</span> <span class="nav-text">ThreadLocalRandom</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="JVM内存区域分了如下几个区域： 虚拟机栈(Stack Frame)">
+<meta name="keywords" content="jvm内存划分,虚拟机栈,程序计数器,堆,方法区,运行时的常量池,直接内存">
+<meta property="og:type" content="article">
+<meta property="og:title" content="jvm原理（37）JVM内存空间划分与作用详解">
+<meta property="og:url" content="https://ceaser.wang/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="JVM内存区域分了如下几个区域： 虚拟机栈(Stack Frame)">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/2018101301.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/2018101302.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.425Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="jvm原理（37）JVM内存空间划分与作用详解">
+<meta name="twitter:description" content="JVM内存区域分了如下几个区域： 虚拟机栈(Stack Frame)">
+<meta name="twitter:image" content="https://ceaser.wang/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/2018101301.png">
+
+<link rel="canonical" href="https://ceaser.wang/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>jvm原理（37）JVM内存空间划分与作用详解 | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          jvm原理（37）JVM内存空间划分与作用详解
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-10-13 20:05:21" itemprop="dateCreated datePublished" datetime="2018-10-13T20:05:21+00:00">2018-10-13</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/jvm/" itemprop="url" rel="index"><span itemprop="name">jvm</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/" class="post-meta-item leancloud_visitors" data-flag-title="jvm原理（37）JVM内存空间划分与作用详解" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>JVM内存区域分了如下几个区域：</p>
+<h1 id="虚拟机栈-Stack-Frame"><a href="#虚拟机栈-Stack-Frame" class="headerlink" title="虚拟机栈(Stack Frame)"></a>虚拟机栈(Stack Frame)</h1><a id="more"></a>
+<p>在执行一个方法的时候，会有一个栈帧，用来存储，方法里边的操作数的出栈入栈，当java文件编译完成的时候，max_stack(栈最大的深度),max_local(最大局部变量表有多少个元素)等都是确定的。</p>
+<h1 id="程序计数器-Program-Counter"><a href="#程序计数器-Program-Counter" class="headerlink" title="程序计数器(Program Counter)"></a>程序计数器(Program Counter)</h1><p>记录方法执行的位置，线程切换回来之后继续从这个位置执行。</p>
+<h1 id="本地方法栈"><a href="#本地方法栈" class="headerlink" title="本地方法栈"></a>本地方法栈</h1><p>主要执行本地方法，native 方法</p>
+<h1 id="堆-Heap"><a href="#堆-Heap" class="headerlink" title="堆(Heap)"></a>堆(Heap)</h1><p>所有进程共享的。<br>我们子啊操作对象的时候，是使用引用的方式去操作对象的，引用放在栈帧里边，对象放在堆里边。<br>那么引用指向的对象在对里边存储有一下2种方式：<br><img src="2018101301.png" alt="都是指针"><br><img src="2018101302.png" alt="一半是对象数据，一半类型指针"></p>
+<h2 id="都是指针"><a href="#都是指针" class="headerlink" title="都是指针"></a>都是指针</h2><p>栈指向堆里边的那块区域分成2部分，每一部分都是存储的一个指针。一个指针指向实际的对象数据，另一个指向<br>元数据区的class数据。</p>
+<h2 id="一半是对象数据，一半类型指针"><a href="#一半是对象数据，一半类型指针" class="headerlink" title="一半是对象数据，一半类型指针"></a>一半是对象数据，一半类型指针</h2><p>栈指向堆里边的那块区域分成2部分，一部分直接就是存储的对象数据。另一部分是一个指针，指向元数据区的类，也就是class数据。</p>
+<p>和堆相关的是垃圾收集器，垃圾收集器目前最常用的收集算法是分代收集算法，所以堆空间也会根据这一点进行划分：新生代，老年代。<br>Eden空间、From Survivor空间、To survivor空间，java的堆空间既可以是连续存放的，也可以是不连续存放的，大部分情况是不连续的。</p>
+<p>oracle的hospot用的是一半是对象数据，一半数类型指针这种方式。<br>为什么采用这种方式？<br>在堆里边很对对象都会因为垃圾收集算法，对象地址也伴随着移动，这种对象的移动是很频繁的，如果用第一种方式<br>每次对象的移动，对象的地址就会发生变化，那么指向它的指针也要跟着变化，这样是很繁琐的，而第二种栈里边指向的区域，第一部分就是直接是对象的数据，而第二部分是class的数据，class的数据一般不会发生变化。这样就相对于第一种方式减少了指针地址变化的次数。</p>
+<h1 id="方法区-Method-area"><a href="#方法区-Method-area" class="headerlink" title="方法区(Method area)"></a>方法区(Method area)</h1><p>存储元信息，class对象，常量等<br>永久代(Permanent Genaration)和方法区不是完全等价的，jdk1.8开始彻底去掉了永久代，jdk8使用元空间(meta space)</p>
+<h1 id="运行时的常量池"><a href="#运行时的常量池" class="headerlink" title="运行时的常量池"></a>运行时的常量池</h1><p>是方法区的一部分，存放常量，就是class字节码的常量池。</p>
+<h1 id="直接内存"><a href="#直接内存" class="headerlink" title="直接内存"></a>直接内存</h1><p>不是jvm管理的内存区域，DirectBuffer申请的，这部分内存是os管理。与java NIO密切相关，jvm是通过堆上的DirectByteBuffer来操作直接内存。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/" title="jvm原理（37）JVM内存空间划分与作用详解">https://ceaser.wang/2018/10/13/jvm原理（37）JVM内存空间划分与作用详解/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/jvm内存划分/" rel="tag"><i class="fa fa-tag"></i> jvm内存划分</a>
+              <a href="/tags/虚拟机栈/" rel="tag"><i class="fa fa-tag"></i> 虚拟机栈</a>
+              <a href="/tags/程序计数器/" rel="tag"><i class="fa fa-tag"></i> 程序计数器</a>
+              <a href="/tags/堆/" rel="tag"><i class="fa fa-tag"></i> 堆</a>
+              <a href="/tags/方法区/" rel="tag"><i class="fa fa-tag"></i> 方法区</a>
+              <a href="/tags/运行时的常量池/" rel="tag"><i class="fa fa-tag"></i> 运行时的常量池</a>
+              <a href="/tags/直接内存/" rel="tag"><i class="fa fa-tag"></i> 直接内存</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/10/13/RPC简易实现/" rel="prev" title="RPC简易实现">
+      <i class="fa fa-chevron-left"></i> RPC简易实现
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/11/18/1-docker-使用镜像/" rel="next" title="1-docker-使用镜像">
+      1-docker-使用镜像 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#虚拟机栈-Stack-Frame"><span class="nav-number">1.</span> <span class="nav-text">虚拟机栈(Stack Frame)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#程序计数器-Program-Counter"><span class="nav-number">2.</span> <span class="nav-text">程序计数器(Program Counter)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#本地方法栈"><span class="nav-number">3.</span> <span class="nav-text">本地方法栈</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#堆-Heap"><span class="nav-number">4.</span> <span class="nav-text">堆(Heap)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#都是指针"><span class="nav-number">4.1.</span> <span class="nav-text">都是指针</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一半是对象数据，一半类型指针"><span class="nav-number">4.2.</span> <span class="nav-text">一半是对象数据，一半类型指针</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#方法区-Method-area"><span class="nav-number">5.</span> <span class="nav-text">方法区(Method area)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#运行时的常量池"><span class="nav-number">6.</span> <span class="nav-text">运行时的常量池</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#直接内存"><span class="nav-number">7.</span> <span class="nav-text">直接内存</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

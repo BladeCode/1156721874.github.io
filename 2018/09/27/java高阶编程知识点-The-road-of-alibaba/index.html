@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="第一部分   面试初级">
+<meta property="og:type" content="article">
+<meta property="og:title" content="java高阶编程知识点---The road of alibaba">
+<meta property="og:url" content="https://ceaser.wang/2018/09/27/java高阶编程知识点-The-road-of-alibaba/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="第一部分   面试初级">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.389Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="java高阶编程知识点---The road of alibaba">
+<meta name="twitter:description" content="第一部分   面试初级">
+
+<link rel="canonical" href="https://ceaser.wang/2018/09/27/java高阶编程知识点-The-road-of-alibaba/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>java高阶编程知识点---The road of alibaba | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2018/09/27/java高阶编程知识点-The-road-of-alibaba/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          java高阶编程知识点---The road of alibaba
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-09-27 20:54:54" itemprop="dateCreated datePublished" datetime="2018-09-27T20:54:54+00:00">2018-09-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/技术之路/" itemprop="url" rel="index"><span itemprop="name">技术之路</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2018/09/27/java高阶编程知识点-The-road-of-alibaba/" class="post-meta-item leancloud_visitors" data-flag-title="java高阶编程知识点---The road of alibaba" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2018/09/27/java高阶编程知识点-The-road-of-alibaba/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/09/27/java高阶编程知识点-The-road-of-alibaba/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>第一部分   面试初级</p>
+<a id="more"></a>
+
+<p>阿里面试题目总结：</p>
+<p>第一轮面试电话（5月6号）：</p>
+<p>1.自我介绍，包括做过项目。</p>
+<p>2.有看过哪些JDK源码，了解哪些常用库。</p>
+<p>3.集合框架HashMap的扩容机制，ConcurrnetHashMap的原理</p>
+<p>java集合框架图：<a href="http://blog.csdn.net/stefanie860624/article/details/7245873" target="_blank" rel="noopener">http://blog.csdn.net/stefanie860624/article/details/7245873</a></p>
+<p>4.jvm内存模型与gc内存回收机制</p>
+<p>5.classloader结构，是否可以自己定义一个java.lang.String类，为什么？ 双亲代理机制。</p>
+<p>6.了解哪些设计模式，6个设计原则分别是什么？每种设计原则体现的设计模式是哪个？</p>
+<p>7.关于设计模式看了哪些书？书名是什么？</p>
+<p>8.uml模型图画过哪些？ 类图中类之间的关系有哪些，区别分别是什么？</p>
+<p>9.画uml中类图时候用过一种虚线么？做什么用的？</p>
+<p>10.做过应用相关性能测试的，举个例子，实际项目中怎么使用的。</p>
+<p>用过并发框架相关的哪些内容</p>
+<p>11.了解哪些osgi的框架？</p>
+<p>12有没有做过jvm内存调优，如何做的，举例子，用过哪些工具？</p>
+<p>//一些不记得了</p>
+<p>第二轮面试视频</p>
+<p>1.自我介绍</p>
+<p>2.看过哪些源码</p>
+<p>3.java的io库的类结构图所用到的设计模式如何体现</p>
+<p>4.画出自己设计过的设计模式如何体现，画出结构图，并进行讲解。</p>
+<p>5.画出自己做的架构的项目架构图 如何扩展等</p>
+<p>6.数据库设计中主键id设计的原则</p>
+<p>7.jvm内存调优用过哪些工具，jstate做什么用的？如何dump出当前线程状态？</p>
+<p>8.并发框架是否有了解</p>
+<p>9.classloader的双亲代理机制</p>
+<p>10.应用服务器的jvm调优实际经验，如何做的，在哪里用到的</p>
+<p>11.在哪里获取最新资讯，逛什么论坛。最新的Swift语言有什么看法</p>
+<p>12.设计原则与设计模式对应</p>
+<p>13.servlet/filter作用原理配置</p>
+<p>14.ibatis in操作 以及一个属性的作用</p>
+<p>15.spring aop 用了什么设计原则，自动注入配置是做什么用的</p>
+<p>16.jboss的类加载器</p>
+<p>17.session共享机制</p>
+<p>18.做过最成功的一件事情是什么？</p>
+<p>19.最大的争执是什么？</p>
+<p>20.为什么想要离职去阿里</p>
+<p>//问题很多，一些不记得了</p>
+<p>第三轮面试电话：</p>
+<p>1.现在公司负责什么？</p>
+<p>2.项目主要目的是做什么的？</p>
+<p>3.公司管理方式、项目问题反馈机制是什么？</p>
+<p>4.Java 的序列化做什么用的 序列化id会出现哪些问题？</p>
+<p>5.OSGi用过哪些？类加载器结构如何，如何在一个bundle中加载另外一个bundle中的一个类？</p>
+<p>6.nio是否了解 阻塞之后通知机制是怎样的？</p>
+<p>7.uml设计类图如何画，类之间关系以及区别</p>
+<p>8.spring如何不许要配置文件加载bean定义，可能是问自动注解或者是properties文件定义bean</p>
+<p>9.ibatis等框架是不是都是实际在使用的,技术细节</p>
+<p>10.为什么想离职去阿里</p>
+<p>//一些不记得了</p>
+<p>第四轮总监面电话面试：</p>
+<p>1.自我介绍</p>
+<p>2.公司做什么，业务， 负责内容，汇报机制等</p>
+<p>3.企业级应用安全相关</p>
+<p>4.http协议，返回码，301与302区别</p>
+<p>5.多线程并发用过哪些</p>
+<p>6.应用服务器相关，谈最熟悉的</p>
+<p>7.为什么离职</p>
+<p>//这个太多不记得了，很多不太会。</p>
+<p>第二部分   面试升级</p>
+<p><a href="http://lvwenwen.iteye.com/blog/1495707" target="_blank" rel="noopener">http://lvwenwen.iteye.com/blog/1495707</a></p>
+<p>第三部分  Java集合框架、IO框架、虚拟机相关、线程</p>
+<p>l  JAVA IO 设计模式彻底分析：<a href="http://blog.csdn.net/oracle_microsoft/article/details/2444947" target="_blank" rel="noopener">http://blog.csdn.net/oracle_microsoft/article/details/2444947</a></p>
+<p>l  JVM类加载机制：<a href="http://blog.csdn.net/nysyxxg/article/details/41978019?ref=myread" target="_blank" rel="noopener">http://blog.csdn.net/nysyxxg/article/details/41978019?ref=myread</a></p>
+<p>l  Java虚拟机学习分享：<a href="http://bbs.csdn.net/topics/390251794" target="_blank" rel="noopener">http://bbs.csdn.net/topics/390251794</a></p>
+<p>l  JDK动态代理实现原理：<a href="http://rejoy.iteye.com/blog/1627405" target="_blank" rel="noopener">http://rejoy.iteye.com/blog/1627405</a><br>l  java容器类源码分析——LinkedHashMap：<a href="http://www.iteye.com/topic/1131321" target="_blank" rel="noopener">http://www.iteye.com/topic/1131321</a><br>l  ConcurrentHashMap：<a href="http://iwebcode.iteye.com/blog/1306640" target="_blank" rel="noopener">http://iwebcode.iteye.com/blog/1306640</a><br>l  解读ClassLoader：<a href="http://www.iteye.com/topic/83978" target="_blank" rel="noopener">http://www.iteye.com/topic/83978</a><br>l  Java并发编程：线程池的使用：<a href="http://www.cnblogs.com/dolphin0520/p/3932921.html" target="_blank" rel="noopener">http://www.cnblogs.com/dolphin0520/p/3932921.html</a><br>l  深入理解HashMap: <a href="http://www.iteye.com/topic/539465" target="_blank" rel="noopener">http://www.iteye.com/topic/539465</a><br>l  需要完全掌握的集合（走读源代码）：<br>Map m1 = newHashMap();</p>
+<p>Map m2 = newHashtable();</p>
+<p>Map m3 = newTreeMap();</p>
+<p>Mapm4 = new  ConcurrentHashMap();</p>
+<p>Map m5 = new  LinkedHashMap();</p>
+<p>Set s1 = newHashSet();</p>
+<p>Set s2 = newTreeSet();</p>
+<p>Set s3 = newLinkedHashSet();</p>
+<p>List l1 = newArrayList();</p>
+<p>List l2 = new  LinkedList();</p>
+<p>Deque<string> deque = newLinkedList<string>();//栈</string></string></p>
+<p>Queue<string> queue = newLinkedList<string>();//队列<br>第四部分   Tomcat以及其他项目源码</string></string></p>
+<p>java类加载器-Tomcat类加载器：<a href="http://www.cnblogs.com/metoy/p/3917535.html" target="_blank" rel="noopener">http://www.cnblogs.com/metoy/p/3917535.html</a><br>Tomcat源码分析：<a href="http://www.cnblogs.com/metoy/p/3855875.html" target="_blank" rel="noopener">http://www.cnblogs.com/metoy/p/3855875.html</a><br>Spring源码走读：<br>《Spring_IOC_.pdf》、<br>《spring源码解析.pdf》、<br>《Spring技术内幕：深入解析Spring架构与设计原理第2版》<br>第五部分  理论</p>
+<p>设计模式六大原则：<a href="http://fyd222.iteye.com/blog/1443150" target="_blank" rel="noopener">http://fyd222.iteye.com/blog/1443150</a><br>计算机网络的基础诸如TCP、IP、三次握手。<br>第六部       推荐书籍（重点）</p>
+<p>《阿里Java Web技术内幕（修订版）试读样章》</p>
+<p>《深入理解<em>Java_虚拟机</em>(JVM_高级特性与最佳实践)》</p>
+<p>此博客全部看完：<a href="http://blog.csdn.net/chjttony/article/list/" target="_blank" rel="noopener">http://blog.csdn.net/chjttony/article/list/</a></p>
+<p>《淘宝技术这十年，完整最终确认版》</p>
+<p>第七部分    提高（云计算方向）</p>
+<p>《大型分布式网站架构设计与实践》</p>
+<p>《Storm 实战：构建大数据实时计算试读样章》</p>
+<p>《重构大数据统计试读样章》</p>
+<p>JDK源码视频300集（讲师是尚学堂讲师高级高琪，此视频看完绝对走火入魔，慎入。。。哈哈）：</p>
+<p>链接：<a href="http://pan.baidu.com/s/1mg1JaiO密码：t21s" target="_blank" rel="noopener">http://pan.baidu.com/s/1mg1JaiO密码：t21s</a></p>
+<p>第八部分    算法</p>
+<p>1、  递归、冒泡排序、归并排序、插入排序、快速排序以及他们的平均复杂度。</p>
+<p>2、  平衡二叉树、满二叉树、红黑树。</p>
+<p>3、  链表、数组。</p>
+<p>4、  B树、B+数。</p>
+<p>未完待续…..</p>
+<p>你要想得到你从未有过的东西，就必须做你从未做过的事！</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2018/09/27/java高阶编程知识点-The-road-of-alibaba/" title="java高阶编程知识点---The road of alibaba">https://ceaser.wang/2018/09/27/java高阶编程知识点-The-road-of-alibaba/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2018/09/27/红黑树原理（RB-Tree-Principle）/" rel="next" title="红黑树原理（RB-Tree Principle）">
+      红黑树原理（RB-Tree Principle） <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

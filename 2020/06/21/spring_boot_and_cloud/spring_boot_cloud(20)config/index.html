@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="spring cloud config 用来为分布式系统中的基础设置和微服务应用提供集中化的外部配置支持，它分为服务端与客户端两个部分，其中服务端也称为分布式配置中心，他是一个独立的微服务应用，用来连接配置仓库并为客户端提供获取配置信息，加密/解密信息等访问接口；而客户端则是微服务架构中的各个微服务应用或基础设施，他们通过指定的配置中心来管理应用资源与业务相关的配置内容，并在启动的时候从配置中心获">
+<meta name="keywords" content="config">
+<meta property="og:type" content="article">
+<meta property="og:title" content="spring_boot_cloud(19)config">
+<meta property="og:url" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="spring cloud config 用来为分布式系统中的基础设置和微服务应用提供集中化的外部配置支持，它分为服务端与客户端两个部分，其中服务端也称为分布式配置中心，他是一个独立的微服务应用，用来连接配置仓库并为客户端提供获取配置信息，加密/解密信息等访问接口；而客户端则是微服务架构中的各个微服务应用或基础设施，他们通过指定的配置中心来管理应用资源与业务相关的配置内容，并在启动的时候从配置中心获">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/config1.png">
+<meta property="og:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/config2.png">
+<meta property="og:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/keytool.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.537Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="spring_boot_cloud(19)config">
+<meta name="twitter:description" content="spring cloud config 用来为分布式系统中的基础设置和微服务应用提供集中化的外部配置支持，它分为服务端与客户端两个部分，其中服务端也称为分布式配置中心，他是一个独立的微服务应用，用来连接配置仓库并为客户端提供获取配置信息，加密/解密信息等访问接口；而客户端则是微服务架构中的各个微服务应用或基础设施，他们通过指定的配置中心来管理应用资源与业务相关的配置内容，并在启动的时候从配置中心获">
+<meta name="twitter:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/config1.png">
+
+<link rel="canonical" href="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>spring_boot_cloud(19)config | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          spring_boot_cloud(19)config
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-06-21 21:23:30" itemprop="dateCreated datePublished" datetime="2020-06-21T21:23:30+00:00">2020-06-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/spring-boot-cloud/" itemprop="url" rel="index"><span itemprop="name">spring_boot_cloud</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/" class="post-meta-item leancloud_visitors" data-flag-title="spring_boot_cloud(19)config" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="spring-cloud-config"><a href="#spring-cloud-config" class="headerlink" title="spring cloud config"></a>spring cloud config</h3><ul>
+<li><p>用来为分布式系统中的基础设置和微服务应用提供集中化的外部配置支持，它分为服务端与客户端两个部分，其中服务端也称为分布式配置中心，他是一个独立的微服务应用，用来连接配置仓库并为客户端提供获取配置信息，加密/解密信息等访问接口；而客户端则是微服务架构中的各个微服务应用或基础设施，他们通过指定的配置中心来管理应用资源与业务相关的配置内容，并在启动的时候从配置中心获取和加载配置信息。</p>
+<a id="more"></a>
+<p><img src="config1.png" alt="config1.png"></p>
+</li>
+<li><p>spring cloud config实现了对服务端和客户端中环境变量和属性配置的抽象映射，他是除了适用于spring构建的应用程序之外，也可以在任何其他语言运行的应用程序中使用，由于spring cloud config实现的配置中心默认采用git来存储配置信息，所以使用spring cloud config构建的配置服务器，天然就支持对微服务应用配置信息的版本管理，并且可以通过git客户端工具来方便的管理和访问配置内容。当然他也提供了对其他存储方式的支持，比如svn仓库，本地化文件系统。</p>
+</li>
+</ul>
+<p>spring cloud config 文件与访问方式剖析</p>
+<ul>
+<li>仓库中的配置文件会被转换为web接口，访问请参考以下的规则<ul>
+<li>{application}/{profile}/{label}</li>
+<li>{application}-{profile}.yml</li>
+<li>{label}/{application}-{profile}.yml</li>
+<li>{application}/{profile}.preperties</li>
+<li>{label}/{application}-{profile}.properties</li>
+</ul>
+</li>
+<li>以config-client-dev为例，它的application是config-client（这里的application是存储配置的应用程序名字），profile是dev。<br>client会根据填写的参数来选择读取对应的配置。</li>
+</ul>
+<p>spring cloud config的高可用<br><img src="config2.png" alt="config2.png"></p>
+<h4 id="加密解密操作"><a href="#加密解密操作" class="headerlink" title="加密解密操作"></a>加密解密操作</h4><ol>
+<li><p>涉及到的改动点：spring-cloud-config-server、github仓库</p>
+</li>
+<li><p>oracle官方加密、解密的支持：<a href="https://www.oracle.com/java/technologies/javase-jce8-downloads.html" target="_blank" rel="noopener">https://www.oracle.com/java/technologies/javase-jce8-downloads.html</a></p>
+</li>
+<li><p>下载：<a href="https://www.oracle.com/webapps/redirect/signon?nexturl=http://download.oracle.com/otn-pub/java/jce/8/jce_policy-8.zip" target="_blank" rel="noopener">https://www.oracle.com/webapps/redirect/signon?nexturl=http://download.oracle.com/otn-pub/java/jce/8/jce_policy-8.zip</a><br>解压之后的local_policy.jar、US_export_policy.jar替换jdk目录C:\Program Files\Java\jdk1.8.0_111\jre\lib\security下的文件。</p>
+</li>
+<li><p>生成密钥对:在E:\Study\intelIde\spring_cloud_projects\spring-cloud-config-server\src\main\resources&gt;下执行：<br>keytool -genkeypair -alias config-server -keyalg RSA -keystore config-server.keystore -validity 400<br>alias:密钥对的别名<br>keyalg：生成算法<br>keystore：秘钥对文件名<br>validity：有效期400天<br><img src="keytool.png" alt="keytool.png"><br>config-server.keystore是一个二进制文件</p>
+<ol start="5">
+<li>配置:<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">encrypt:</span><br><span class="line">  key-store:</span><br><span class="line">    location: config-server.keystore # 这个文件的存储位置在真实的线上环境一般是使用一个环境变量制定，不会直接写一个地址，为了安全考虑</span><br><span class="line">    alias: config-server # keytool生成秘钥的时候指定的alias</span><br><span class="line">    password: 123456</span><br><span class="line">    secret: 123456</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+<li><p>执行加密<br>curl -X POST -d ‘<a href="http://redis-develop.host&#39;" target="_blank" rel="noopener">http://redis-develop.host&#39;</a>  <a href="http://localhost:7000/encrypt" target="_blank" rel="noopener">http://localhost:7000/encrypt</a><br>会生成一个加密的字符串A,此时修改<a href="https://github.com/1156721874/config-test/blob/master/config/config-develop.properties" target="_blank" rel="noopener">https://github.com/1156721874/config-test/blob/master/config/config-develop.properties</a> 的<br>redis.host值为:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis.host=&#123;cipher&#125;加密后的字符串A</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>解密测试<br>curl -X POST -d ‘加密后的字符串A’  <a href="http://localhost:7000/decrypt" target="_blank" rel="noopener">http://localhost:7000/decrypt</a><br>解密之后的值会解密出来</p>
+</li>
+<li><p>浏览器访问spring-cloud-config-client的地址:<a href="http://localhost:8000/hosts" target="_blank" rel="noopener">http://localhost:8000/hosts</a><br>加载出来的数据都是自动解密的。</p>
+</li>
+</ol>
+<h4 id="动态配置生效"><a href="#动态配置生效" class="headerlink" title="动态配置生效"></a>动态配置生效</h4><p>spring-cloud-config-client配置端点：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">management:</span><br><span class="line">  endpoints:</span><br><span class="line">    web:</span><br><span class="line">      exposure:</span><br><span class="line">        include: &apos;*&apos;</span><br><span class="line">  endpoint:</span><br><span class="line">    shutdown:</span><br><span class="line">      enabled: true</span><br></pre></td></tr></table></figure>
+
+<p>会多出来一个refresh的端点.<br>spring-cloud-config-client属性的动态加载配置:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">@RefreshScope</span><br><span class="line">public class ConfigClientConfig &#123;</span><br><span class="line"></span><br><span class="line">    @Value(&quot;$&#123;redis.host&#125;&quot;)</span><br><span class="line">    private String redisHost;</span><br><span class="line"></span><br><span class="line">    @Value(&quot;$&#123;mysql.host&#125;&quot;)</span><br><span class="line">    private String mysqlHost;</span><br><span class="line"></span><br><span class="line">    @Value(&quot;$&#123;mongo.host&#125;&quot;)</span><br><span class="line">    private String mongoHost;</span><br><span class="line"></span><br><span class="line">    public String getRedisHost() &#123;</span><br><span class="line">        return redisHost;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public String getMysqlHost() &#123;</span><br><span class="line">        return mysqlHost;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public String getMongoHost() &#123;</span><br><span class="line">        return mongoHost;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>即加入一个@RefreshScope注解。<br>此时修改github的<a href="https://github.com/1156721874/config-test/blob/master/config/config-develop.properties配置，然后浏览器访问spring-cloud-config-client的地址:http://localhost:8000/hosts" target="_blank" rel="noopener">https://github.com/1156721874/config-test/blob/master/config/config-develop.properties配置，然后浏览器访问spring-cloud-config-client的地址:http://localhost:8000/hosts</a><br>得到的数据依然没有更新。<br>为了让修改生效 我们访问：<a href="http://localhost:8000/actuator/refresh" target="_blank" rel="noopener">http://localhost:8000/actuator/refresh</a><br>刷新一下本地的配置信息，这个时候spring-cloud-config-client和spring-cloud-config-server都会有刷新的动作，确切的说是client远程通知server更新。<br>再次访问spring-cloud-config-client的地址:<a href="http://localhost:8000/hosts" target="_blank" rel="noopener">http://localhost:8000/hosts</a><br>得到的信息已经得到更新！实现了动态加载。<br>这里可以使用github的webhoke.</p>
+<h4 id="客户端发现服务端的方式"><a href="#客户端发现服务端的方式" class="headerlink" title="客户端发现服务端的方式"></a>客户端发现服务端的方式</h4><p>客户端配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">spring:</span><br><span class="line">  application:</span><br><span class="line">    name: config</span><br><span class="line">  cloud:</span><br><span class="line">    config:</span><br><span class="line">#     uri: http://localhost:7000 #注释掉，使用注册中心的方式，即下边的discovery的配置方式</span><br><span class="line">      label: master</span><br><span class="line">      profile: develop</span><br><span class="line">      discovery:</span><br><span class="line">        enabled: true</span><br><span class="line">        service-id: config-server</span><br></pre></td></tr></table></figure>
+
+<h3 id="bus消息总线实现配置自动刷新"><a href="#bus消息总线实现配置自动刷新" class="headerlink" title="bus消息总线实现配置自动刷新"></a>bus消息总线实现配置自动刷新</h3><h4 id="客户端和服务端同时加入rabbitmq的依赖："><a href="#客户端和服务端同时加入rabbitmq的依赖：" class="headerlink" title="客户端和服务端同时加入rabbitmq的依赖："></a>客户端和服务端同时加入rabbitmq的依赖：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">dependencies &#123;</span><br><span class="line">    compile(</span><br><span class="line">            &quot;org.springframework.boot:spring-boot-starter-web&quot;,</span><br><span class="line">            &quot;org.springframework.cloud:spring-cloud-starter-netflix-eureka-server&quot;,</span><br><span class="line">            &quot;org.springframework.boot:spring-boot-starter-actuator&quot;,</span><br><span class="line">            &quot;org.springframework.boot:spring-boot-starter-undertow&quot;,</span><br><span class="line">            &quot;org.springframework.cloud:spring-cloud-config-server&quot;,</span><br><span class="line">            &quot;org.springframework.cloud:spring-cloud-starter-bus-amqp&quot;</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    configurations &#123;</span><br><span class="line">        all*.exclude group: &apos;org.springframework.boot&apos;, module: &apos;spring-boot-starter-tomcat&apos;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="客户端和服务端的配置"><a href="#客户端和服务端的配置" class="headerlink" title="客户端和服务端的配置"></a>客户端和服务端的配置</h4><p>客户端和服务端同时配置端点：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">management:</span><br><span class="line">  endpoints:</span><br><span class="line">    web:</span><br><span class="line">      exposure:</span><br><span class="line">        include: &apos;*&apos;</span><br><span class="line">  endpoint:</span><br><span class="line">    shutdown:</span><br><span class="line">      enabled: true</span><br></pre></td></tr></table></figure>
+
+<p>配置端点是为了打开刷新的能力</p>
+<h4 id="rabbitmq的配置"><a href="#rabbitmq的配置" class="headerlink" title="rabbitmq的配置"></a>rabbitmq的配置</h4><p>客户端和服务端同时配置</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">rabbitmq:</span><br><span class="line">  host: localhost</span><br><span class="line">  port: 5672</span><br><span class="line">  username: config-server</span><br><span class="line">  password: config-server</span><br></pre></td></tr></table></figure>
+
+<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><ul>
+<li>启动服务端、客户端，在服务端会看到一个[/actuator/bus-refresh]</li>
+<li>改变github的一个配置</li>
+<li>刷新server: curl -X POST <a href="http://localhost:7000/actuator/bus-refresh" target="_blank" rel="noopener">http://localhost:7000/actuator/bus-refresh</a></li>
+<li>服务端刷新完之后，会通过bus总线通知所有注册的客户端，所有的客户端也会得到这样一个通知，使得配置在所有的客户端生效</li>
+<li>访问其中一个客户端：<a href="http://localhost:8000/hosts" target="_blank" rel="noopener">http://localhost:8000/hosts</a> 会发现配置生效了。</li>
+</ul>
+<p>和之前说的刷新客户端的方式，这种bus的方式是刷新的服务端，然后通知到所有的客户端。但是也是离不开webhoke的帮助</p>
+<h4 id="本期代码："><a href="#本期代码：" class="headerlink" title="本期代码："></a>本期代码：</h4><p><a href="https://github.com/1156721874/spring_cloud_projects/tree/master/spring-cloud-config-server" target="_blank" rel="noopener">https://github.com/1156721874/spring_cloud_projects/tree/master/spring-cloud-config-server</a><br><a href="https://github.com/1156721874/spring_cloud_projects/tree/master/spring-cloud-config-client" target="_blank" rel="noopener">https://github.com/1156721874/spring_cloud_projects/tree/master/spring-cloud-config-client</a><br><a href="https://github.com/1156721874/config-test" target="_blank" rel="noopener">https://github.com/1156721874/config-test</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/" title="spring_boot_cloud(19)config">https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/config/" rel="tag"><i class="fa fa-tag"></i> config</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/" rel="prev" title="spring_boot_cloud(19)zuul">
+      <i class="fa fa-chevron-left"></i> spring_boot_cloud(19)zuul
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/06/25/spring_boot_and_cloud/spring_boot_cloud(20)sleuth/" rel="next" title="spring_boot_cloud(20)sleuth">
+      spring_boot_cloud(20)sleuth <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#spring-cloud-config"><span class="nav-number">1.</span> <span class="nav-text">spring cloud config</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#加密解密操作"><span class="nav-number">1.1.</span> <span class="nav-text">加密解密操作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#动态配置生效"><span class="nav-number">1.2.</span> <span class="nav-text">动态配置生效</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#客户端发现服务端的方式"><span class="nav-number">1.3.</span> <span class="nav-text">客户端发现服务端的方式</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bus消息总线实现配置自动刷新"><span class="nav-number">2.</span> <span class="nav-text">bus消息总线实现配置自动刷新</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#客户端和服务端同时加入rabbitmq的依赖："><span class="nav-number">2.1.</span> <span class="nav-text">客户端和服务端同时加入rabbitmq的依赖：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#客户端和服务端的配置"><span class="nav-number">2.2.</span> <span class="nav-text">客户端和服务端的配置</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#rabbitmq的配置"><span class="nav-number">2.3.</span> <span class="nav-text">rabbitmq的配置</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#验证"><span class="nav-number">2.4.</span> <span class="nav-text">验证</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#本期代码："><span class="nav-number">2.5.</span> <span class="nav-text">本期代码：</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

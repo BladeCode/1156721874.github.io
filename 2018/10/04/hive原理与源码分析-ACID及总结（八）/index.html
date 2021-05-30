@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="ACID是什么？数据库事务的四个特征">
+<meta name="keywords" content="hive">
+<meta property="og:type" content="article">
+<meta property="og:title" content="hive原理与源码分析-ACID及总结（八）">
+<meta property="og:url" content="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="ACID是什么？数据库事务的四个特征">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/20170529130405614.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/20170529131048959.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/20170529131539090.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/20170529141813052.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/20170529141959387.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/20170529142929705.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.305Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="hive原理与源码分析-ACID及总结（八）">
+<meta name="twitter:description" content="ACID是什么？数据库事务的四个特征">
+<meta name="twitter:image" content="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/20170529130405614.png">
+
+<link rel="canonical" href="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>hive原理与源码分析-ACID及总结（八） | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          hive原理与源码分析-ACID及总结（八）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-10-04 11:37:00" itemprop="dateCreated datePublished" datetime="2018-10-04T11:37:00+00:00">2018-10-04</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/cloud/" itemprop="url" rel="index"><span itemprop="name">cloud</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2018/10/04/hive原理与源码分析-ACID及总结（八）/" class="post-meta-item leancloud_visitors" data-flag-title="hive原理与源码分析-ACID及总结（八）" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2018/10/04/hive原理与源码分析-ACID及总结（八）/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/10/04/hive原理与源码分析-ACID及总结（八）/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><strong>ACID是什么？</strong><br>数据库事务的四个特征</p>
+<a id="more"></a>
+<p>Atomicity原子性：要么成功要么失败，不会残留一半的数据<br>Consisitency一致性：一旦操作完成，后续的操作可以看到操作的结果<br>Isolation隔离性：一个用户的未完成操作不会对其它用户产生影响<br>Durability持久性：一旦操作完成，操作将会持久化，不会受系统故障得影响</p>
+<p><strong>Hive ACID</strong><br>Hive 0.13 以后的版本开始支持ACID<br>主要用于以下场景：<br>    流式数据处理：如Flume, Storm和Kafka，数据进入即可见<br>    不常变化的维表：如在维表中增加或者删除一个维度<br>    数据订正：INSERT／UPDATE／DELETE</p>
+<p><strong>ACID限制</strong><br>不支持BEGIN，COMMIT和ROLLBACK，只支持单条语句的ACID (Auto-Commit)<br>目前只支持Orc File Format<br>只支持分桶的表Bucketed<br>不支持从非ACID的会话读写ACID表(DbTxnManager)<br>只支持快照级别隔离<br>不兼容之前的ZooKeeperLockManager</p>
+<p>虽然有很多限制，但是还是也有他的强项，比如流式API<br><strong>Streaming APIs</strong><br><a href="https://cwiki.apache.org/confluence/display/Hive/Streaming+Data+Ingest" target="_blank" rel="noopener">https://cwiki.apache.org/confluence/display/Hive/Streaming+Data+Ingest</a> (Hive 0.14)<br><a href="https://cwiki.apache.org/confluence/display/Hive/HCatalog+Streaming+Mutation+API" target="_blank" rel="noopener">https://cwiki.apache.org/confluence/display/Hive/HCatalog+Streaming+Mutation+API</a> (Hive 2.0.0)</p>
+<p><strong>新的语法</strong><br>INSERT INTO tbl VALUES(1, ‘fred’, …)<br>UPDATE tbl SET (x=5, …) WHERE …<br>DELETE FROM tbl WHERE …<br>支持分区表与非分区表（回忆PPR, PPD优化器）</p>
+<p><strong>一些限制</strong><br>目前只支持ORCFile<br>    <a href="https://www.codatlas.com/github.com/apache/hive/master/ql/src/java/org/apache/hadoop/hive/ql/io/AcidInputFormat.java?line=108" target="_blank" rel="noopener">https://www.codatlas.com/github.com/apache/hive/master/ql/src/java/org/apache/hadoop/hive/ql/io/AcidInputFormat.java?line=108</a> 源码告诉你为什么<br>    要支持文件的事物，除了os提供之外，就是hive自己实现，比如：OrcInputFormat<br>    <img src="20170529130405614.png" alt="这里写图片描述"><br>表必须是Bucket表<br>    可以只有一个Bucket，但性能会比单机还差<br>表上必须有transactional=true的标记<br>    TBLPROPERTIES(‘transactional’ =‘true)</p>
+<p><strong>ACID设计</strong><br>HDFS是一个Write-once, Read-many-times的文件系统，不支持文件修改（In-place Update)<br>    把操作变成增量文件（Delta Files)<br>    在读取的时间，合并增量文件(Stitched Together)<br>写的时候需要全局唯一的事务ID<br>    由MetaStore生成<br>读的时候只读已经提交过的结果<br>    快照一致性、无锁<br>    查询开始时候向查询提供一份快照</p>
+<p><strong>Bucket和Partition的重要区别</strong><br>Bucket是一个文件<br>Partition是一组文件<br>事务ACID必须基于Bucket + OrcFile<br>从理论上，以后可以支持多种文件的事务，但目前还不支持</p>
+<p><strong>文件合并</strong><br><img src="20170529131048959.png" alt="这里写图片描述"><br>读的时候对原始文件和增量文件进行合并</p>
+<p><strong>ACID增量在HDFS上的存储</strong><br>分区路径（Storage Descriptor）保持不变<br>    $warehouse/$db/$tbl/$part<br>事务生成的bucket文件<br>    基础文件Base Files: $part/base_$tid/bucket_*<br>    增量文件Delta Files: $part/delta_$tid_$tid/bucket_*</p>
+<p><strong>InputFormat/OutputFormat</strong><br>AcidInputFormat / AcidOutputFormat<br>    全局唯一键事务、Bucket、行<br>AcidReader支持事务的版本号<br>目前只有Orc支持</p>
+<p><strong>文件分发</strong><br>对于MapReduce读取文件（TableScan只在Map）<br>读取Splits同时读取Delta<br>Key Ranges<br>Indexes<br><img src="20170529131539090.png" alt="这里写图片描述">  </p>
+<p>Delta会读到内存，有益处的风险，Delta一般 不会超过10个。</p>
+<p><strong>事务管理器Transaction Manager</strong><br>Hive 0.14以前有两种表级的事务管理器，DML来了，表锁住，查询暂停，两种实现<br>    In Memory – Not Durable 即放在内存里边，断电丢失<br>    Zoo Keeper – 额外组件的安装，配置复杂<br>锁必须与事务相结合，事务提交时释放锁<br>MetaStore可以做ACID，因为MetaStore底层是关系型数据库中心结点<br>使用MetaStore DB(MySQL)生成全局唯一递增的事务Id</p>
+<p><strong>事务模型Transaction Model</strong><br>互联网新技术在线教育领航者<br>事务模型Transaction Model<br>Hive 0.14开始，事务auto-commit，语句级<br>    不支持BEGIN／COMMIT／ROLLBACK<br>快照隔离<br>    整个查询执行期间，数据是一致的<br>SHOW TRANSACTIONS语句</p>
+<p><strong>锁模型Locking Model</strong><br>三种类型的锁<br>    Shared<br>    Semi-Shared (能与Shared共存，不能与Semi-Shared共存）<br>    Exclusive<br>不同操作需要不同类型的锁<br>    SELECT, INSERT – shared<br>    UPDATE, DELETE – semi-shared<br>    DROP, INSERT OVERWRITE - exclusive</p>
+<p><strong>Compactor</strong><br>每一个Transaction(或者Streaming中的一个Batch)创建一个增量文件（Delta File)<br>想象一会，会有很多Delta File，回忆一下会对Namenode造成什么影响<br>需要一些方式去合并<br>    Minor Compaction: 把很多delta合并成一个delta<br>    Major Compaction: 把很多delta合并成Base</p>
+<p><strong>Minor Compaction</strong><br>当有10个（可配置）以上的增量文件时<br>结果：1个Base + 1个Delta<br><img src="20170529141813052.png" alt="这里写图片描述">  </p>
+<p><strong>Major Compaction</strong><br>当Delta达到基表的10%文件大小（可配置）时运行<br>结果只有一个基表<br><img src="20170529141959387.png" alt="这里写图片描述"></p>
+<p><strong>Compactor如何执行？</strong><br>MetaStore定期执行<br>    不需要用户手工调度<br>    ALTER TABLE COMPACT语句<br>无锁，可与Query/DML同时执行<br>    在一边执行，然后原子性替换<br>SHOW COMPACTIONS</p>
+<p><strong>流式写入</strong><br>数据流式地流入Hive<br>没有流式功能的话，通常需要小时调度<br>hive.hcatlog.streaming接口<br>    用户实时看到数据，可实时查询<br>Flume/Storm/Kafka</p>
+<p><strong>参考代码及实现</strong><br><a href="https://issues.apache.org/jira/browse/HIVE-5317" target="_blank" rel="noopener">https://issues.apache.org/jira/browse/HIVE-5317</a></p>
+<p><strong>Hive再看</strong><br><img src="20170529142929705.png" alt="这里写图片描述">  </p>
+<p><strong>复习及总结</strong><br>Hive是什么？<br>Driver做什么用的？<br>逻辑优化器？<br>物理优化器？<br>四种执行引擎？<br>查看执行计划？<br>JOIN／Group By倾斜怎么办？<br>HiveServer 2/ MetaStore/ LLAP<br>ACID</p>
+<p><strong>Hive Join优化</strong><br><a href="https://cwiki.apache.org/confluence/display/Hive/LanguageManual+JoinOptimization" target="_blank" rel="noopener">https://cwiki.apache.org/confluence/display/Hive/LanguageManual+JoinOptimization</a><br>对抗倾斜</p>
+<p>Hive CBO<br><a href="https://cwiki.apache.org/confluence/display/Hive/Cost-based+optimization+in+Hive" target="_blank" rel="noopener">https://cwiki.apache.org/confluence/display/Hive/Cost-based+optimization+in+Hive</a><br>自定义优化器</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/" title="hive原理与源码分析-ACID及总结（八）">https://ceaser.wang/2018/10/04/hive原理与源码分析-ACID及总结（八）/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/hive/" rel="tag"><i class="fa fa-tag"></i> hive</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/10/04/hive原理与源码分析-服务化：LLAP、HiveServer2、MetaStore（七）/" rel="prev" title="hive原理与源码分析-服务化：LLAP、HiveServer2、MetaStore（七）">
+      <i class="fa fa-chevron-left"></i> hive原理与源码分析-服务化：LLAP、HiveServer2、MetaStore（七）
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/10/04/git-一-git入门，版本库初始化以及常用命令操作/" rel="next" title="git(一)-git入门，版本库初始化以及常用命令操作">
+      git(一)-git入门，版本库初始化以及常用命令操作 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

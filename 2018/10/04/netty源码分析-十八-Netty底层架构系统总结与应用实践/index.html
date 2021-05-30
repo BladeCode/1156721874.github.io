@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一个EventLoopGroup当中会包含一个或多个EventLoop。 一个EventLoop在它的整个生命周期当中都只会与唯一一个Thread进行绑定。">
+<meta name="keywords" content="总结">
+<meta property="og:type" content="article">
+<meta property="og:title" content="netty源码分析(十八)Netty底层架构系统总结与应用实践">
+<meta property="og:url" content="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="一个EventLoopGroup当中会包含一个或多个EventLoop。 一个EventLoop在它的整个生命周期当中都只会与唯一一个Thread进行绑定。">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/20171111111532427.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/20171111111707281.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/20171111123724142.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/20171111143540741.png">
+<meta property="og:image" content="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/20171111154834954.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.513Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="netty源码分析(十八)Netty底层架构系统总结与应用实践">
+<meta name="twitter:description" content="一个EventLoopGroup当中会包含一个或多个EventLoop。 一个EventLoop在它的整个生命周期当中都只会与唯一一个Thread进行绑定。">
+<meta name="twitter:image" content="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/20171111111532427.png">
+
+<link rel="canonical" href="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>netty源码分析(十八)Netty底层架构系统总结与应用实践 | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          netty源码分析(十八)Netty底层架构系统总结与应用实践
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-10-04 14:53:04" itemprop="dateCreated datePublished" datetime="2018-10-04T14:53:04+00:00">2018-10-04</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/netty/" itemprop="url" rel="index"><span itemprop="name">netty</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/" class="post-meta-item leancloud_visitors" data-flag-title="netty源码分析(十八)Netty底层架构系统总结与应用实践" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ol>
+<li>一个EventLoopGroup当中会包含一个或多个EventLoop。</li>
+<li>一个EventLoop在它的整个生命周期当中都只会与唯一一个Thread进行绑定。<a id="more"></a></li>
+<li>所有由EventLoop所处理的各种I/O事件都将在它所关联的那个Thread上进行处理。</li>
+<li>一个Channel在它的整个生命周期中只会注册在一个EventLoop上。</li>
+<li>一个EventLoop在运行过程中，会被分配给一个或多个Channel。</li>
+<li>同一个Channel提交的任务执行顺序和提交顺序是一样的（先进去的先出来，任务队列）。</li>
+</ol>
+<p>重要结论：在netty的实现当中一定是线程安全的，基于此我们可以存储存储一个channel的引用，并且在需要向远程端点发送数据时，通过这个引用来调用Channel相应的方法；即便当时有很多线程在使用它也不会出现多线程问题，而且消息一定会按照顺序发送出去。</p>
+<p>重要结论：我们在业务开发中，不要将长时间执行的耗时任务放入到EventLoop的执行队列中，因为它将会一直阻塞该线程所对应的所有Channel上的其他执行任务，如果我们需要进行阻塞调用或是耗时的操作（实际开发中很常见），那么我们就需要使用一个专门的EventExecutor（业务线程池）。</p>
+<p>通常会有2种实现方式：<br>1、在ChannelHandler的回调方法中，使用自己定义的业务线程池，这样就可以实现异步调用。<br><img src="20171111111532427.png" alt="这里写图片描述"><br>2、借助于netty提供的向ChannelPipeLine添加ChannelHandler时调用的addLast方法来传递EventExecutor。<br>说明：默认情况下（调用addLast(handler)），ChannelHandler中的回调方法都是由I/O线程所执行，如果调用了ChannelPipeline addLast(EventExecutorGroup group, ChannelHandler… handlers);方法，那么ChannelHandler中的回调方法就是由参数中的group线程组来执行。<br><img src="20171111111707281.png" alt="这里写图片描述">  </p>
+<p>netty的异步：<br><img src="20171111123724142.png" alt="这里写图片描述">  </p>
+<p>从上图可以看到，ChannelPromise继承了Promise 接口，而Promise是可以写的(writable)，什么是可以写的，之前的Future都是get，isSuccess之类的方法，在ChannelPromise里边可以看到setSuccess(Void result)【setSuccess只能写一次，下一次写报错】之类的写方法。ChannelPromise字面意思是承诺的意思，不管是成功还是失败会承诺给你一个结果。</p>
+<p>JDK所提供的Future只能通过手工方式检查执行结果，而这个操作是会阻塞的；Netty则对ChannelFuture进行了增强，这里涉及到的是观察者模式，通过ChannelFutureListener以回调的方式来获取执行结果，去除了手工检查阻塞的操作，值得注意的是：ChannelFutureListener的operationcomplete方法是由I/O线程执行的，因此要注意的是不要再这里执行耗时操作，否则需要需要通过另外的线程或线程池来执行。<br><img src="20171111143540741.png" alt="这里写图片描述"><br>举例：jdk的Future得到返回结果是使用get或者isDone获取，而这两个方式是阻塞的，即使是用超时时间的方法如果时间到了获取不到也是返回null，这些事情都是开发人员自己做的，而Netty解决了这个弊端，netty通过在Future上加入了监听器的模式，注册到Future上若干Listner，Future持有Channel，当某一个事件发生的时候，Future调用对应的Listner的方法，方法入参会有当前Future的引用，所以在Listener里边就会得到Future的Channel，之后在Listener里边得到Channel的数据进行处理，这也是上边说的不要再Listener的方法里边处理耗时的业务的原因。</p>
+<p>再说一下ChannelHandler，ChannelHandler有入栈和出栈的Handler，就拿ChannelInboundHandlerAdapter 来说，我们要写一个入栈处理器，需要必须重写接口里边的所有方法，但是我们只用一部分方法，而Adapter是一种适配器模式，会把所有方法实现，我们在用的时候直接用适配的类（要么重写要么直接使用）去实现业务逻辑就可以了，大大方便了开发者以及减轻来了开发者的工作量。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">public class ChannelInboundHandlerAdapter extends ChannelHandlerAdapter implements ChannelInboundHandler &#123;</span><br><span class="line">...略</span><br><span class="line">   public ChannelInboundHandlerAdapter() &#123;</span><br><span class="line">   &#125;</span><br><span class="line">   public void channelRegistered(ChannelHandlerContext ctx) throws Exception &#123;</span><br><span class="line">       ctx.fireChannelRegistered();</span><br><span class="line">   &#125;</span><br><span class="line">   public void channelUnregistered(ChannelHandlerContext ctx) throws Exception &#123;</span><br><span class="line">       ctx.fireChannelUnregistered();</span><br><span class="line">   &#125;</span><br><span class="line">   ...略</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ChannelInboundHandlerAdapter 的具体实现类有SimpleChannelInboundHandler,他和ChannelInboundHandlerAdapter 有什么区别呢？</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">public abstract class SimpleChannelInboundHandler&lt;I&gt; extends ChannelInboundHandlerAdapter</span><br><span class="line">&#123;</span><br><span class="line">...略</span><br><span class="line"> protected abstract void channelRead0(ChannelHandlerContext ctx, I msg) throws Exception;</span><br><span class="line"> //开发者必须实现该方法，因为是静态的（模板设计模式）</span><br><span class="line"> ...略</span><br><span class="line"></span><br><span class="line">     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception &#123;</span><br><span class="line">       boolean release = true;</span><br><span class="line">       try &#123;</span><br><span class="line">           if (acceptInboundMessage(msg)) &#123;</span><br><span class="line">               @SuppressWarnings(&quot;unchecked&quot;)</span><br><span class="line">               I imsg = (I) msg;//强制转换</span><br><span class="line">               channelRead0(ctx, imsg);//暴露给开发者的接口，带有泛型</span><br><span class="line">           &#125; else &#123;</span><br><span class="line">               release = false;</span><br><span class="line">               ctx.fireChannelRead(msg);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125; finally &#123;</span><br><span class="line">           if (autoRelease &amp;&amp; release) &#123;</span><br><span class="line">               ReferenceCountUtil.release(msg);//引用数减一，将资源释放掉，因此消息的引用我们不要再外围引用，</span><br><span class="line">               //因为消息在这里被释放掉了</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>很直观就是加了一个泛型I，I就是接受的消息的类型，比如String，Object等，而在ChannelInboundHandlerAdapter 里边四需要把消息 强制类型转换的，这是他们最大的区别。除此之外SimpleChannelInboundHandler会对消息执行ReferenceCountUtil.release(Object)和ReferenceCountUtil.retain(Object)  分别是释放一个消息引用和保持一个消息引用（流到下一个handler）.<br>我们一般会使用ChannelInboundHandlerAdapter 和SimpleChannelInboundHandler处理入栈数据。<br>实际应用：<br><img src="20171111154834954.png" alt="这里写图片描述"></p>
+<p>ReferenceCountUtil的release方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">public static boolean release(Object msg) &#123;</span><br><span class="line">    if (msg instanceof ReferenceCounted) &#123;</span><br><span class="line">        return ((ReferenceCounted) msg).release();</span><br><span class="line">    &#125;</span><br><span class="line">    return false;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最终使用的是ReferenceCounted类操作的：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">* A reference-counted object that requires explicit deallocation.</span><br><span class="line">* &lt;p&gt;</span><br><span class="line">* When a new &#123;@link ReferenceCounted&#125; is instantiated, it starts with the reference count of &#123;@code 1&#125;.</span><br><span class="line">* &#123;@link #retain()&#125; increases the reference count, and &#123;@link #release()&#125; decreases the reference count.</span><br><span class="line">* If the reference count is decreased to &#123;@code 0&#125;, the object will be deallocated explicitly, and accessing</span><br><span class="line">* the deallocated object will usually result in an access violation.</span><br><span class="line">* &lt;/p&gt;</span><br><span class="line">* 当一个ReferenceCounted被实例化的时候，它的引用数是1，retain()增加一个引用次数，release()减少一个引用次数，如果引用数量是0</span><br><span class="line">* 的时候，这个对象将会被显示的回收，去访问的一个被回收的对象通常的结果是访问违法常规的。</span><br><span class="line">* &lt;p&gt;</span><br><span class="line">* If an object that implements &#123;@link ReferenceCounted&#125; is a container of other objects that implement</span><br><span class="line">* &#123;@link ReferenceCounted&#125;, the contained objects will also be released via &#123;@link #release()&#125; when the container&apos;s</span><br><span class="line">* reference count becomes 0.</span><br><span class="line">* &lt;/p&gt;</span><br><span class="line">* 如果一个一个实现了ReferenceCounted的类的对象最为一个容器，并且容器里边有若干对象，那么在容器外部被引用的次数为0的时候，随着容器的回收，</span><br><span class="line">* 容器内部的对象也会被回收。</span><br><span class="line">*/</span><br><span class="line">public interface ReferenceCounted &#123;</span><br><span class="line">....略</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/" title="netty源码分析(十八)Netty底层架构系统总结与应用实践">https://ceaser.wang/2018/10/04/netty源码分析-十八-Netty底层架构系统总结与应用实践/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/总结/" rel="tag"><i class="fa fa-tag"></i> 总结</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/10/04/netty源码分析-十七-Netty线程模型深度解读与架构设计原则/" rel="prev" title="netty源码分析(十七)Netty线程模型深度解读与架构设计原则">
+      <i class="fa fa-chevron-left"></i> netty源码分析(十七)Netty线程模型深度解读与架构设计原则
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/10/04/netty源码分析-十九-Netty项目开发过程中常见且重要事项分析/" rel="next" title="netty源码分析(十九)Netty项目开发过程中常见且重要事项分析">
+      netty源码分析(十九)Netty项目开发过程中常见且重要事项分析 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

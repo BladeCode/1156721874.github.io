@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="http://my.oschina.net/itblog/blog/547250http://baidu.blog.51cto.com/71938/1676798">
+<meta name="keywords" content="elasticsearch,kibana,logstash">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ELK_ElasticSearch-Logstash-Kibana搭建实时日志分析平台">
+<meta property="og:url" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="http://my.oschina.net/itblog/blog/547250http://baidu.blog.51cto.com/71938/1676798">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213017295.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213047641.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213111001.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213129470.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213154905.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213232331.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213301269.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213420880.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213451131.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213623063.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213649711.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213724884.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213745415.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213826158.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213847346.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213902002.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213940605.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214101488.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214136624.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214222770.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214324330.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214412190.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214441287.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214507600">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214535116.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214605958.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214633881.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214710163.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214827148.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214853540.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214914320.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802214949057.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215013510.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215039664.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215105746.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215128024.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215154747.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215216545.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215240915.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215302619.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215327187.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215349000.png">
+<meta property="og:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802215405228.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.233Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ELK_ElasticSearch-Logstash-Kibana搭建实时日志分析平台">
+<meta name="twitter:description" content="http://my.oschina.net/itblog/blog/547250http://baidu.blog.51cto.com/71938/1676798">
+<meta name="twitter:image" content="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/20160802213017295.png">
+
+<link rel="canonical" href="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>ELK_ElasticSearch-Logstash-Kibana搭建实时日志分析平台 | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ELK_ElasticSearch-Logstash-Kibana搭建实时日志分析平台
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-09-28 22:14:37" itemprop="dateCreated datePublished" datetime="2018-09-28T22:14:37+00:00">2018-09-28</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/cloud/" itemprop="url" rel="index"><span itemprop="name">cloud</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/" class="post-meta-item leancloud_visitors" data-flag-title="ELK_ElasticSearch-Logstash-Kibana搭建实时日志分析平台" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><a href="http://my.oschina.net/itblog/blog/547250" target="_blank" rel="noopener">http://my.oschina.net/itblog/blog/547250</a><br><a href="http://baidu.blog.51cto.com/71938/1676798" target="_blank" rel="noopener">http://baidu.blog.51cto.com/71938/1676798</a></p>
+<a id="more"></a>
+<p>1、ELK由ElasticSearch、Logstash和Kiabana三个开源工具组成。官方网站：<a href="https://www.elastic.co/products" target="_blank" rel="noopener">https://www.elastic.co/products</a><br>•    Elasticsearch是个开源分布式搜索引擎，它的特点有：分布式，零配置，自动发现，索引自动分片，索引副本机制，restful风格接口，多数据源，自动搜索负载等。<br>•    Logstash是一个完全开源的工具，他可以对你的日志进行收集、过滤，并将其存储供以后使用（如，搜索）。<br>•    Kibana 也是一个开源和免费的工具，它Kibana可以为 Logstash 和 ElasticSearch 提供的日志分析友好的 Web 界面，可以帮助您汇总、分析和搜索重要数据日志。<br><img src="20160802213017295.png" alt="这里写图片描述"><br><img src="20160802213047641.png" alt="这里写图片描述"><br><img src="20160802213111001.png" alt="这里写图片描述"><br><img src="20160802213129470.png" alt="这里写图片描述"><br>•    画了一个ELK工作的原理图：<br><img src="20160802213154905.png" alt="这里写图片描述"><br>•    如图：Logstash收集AppServer产生的Log，并存放到ElasticSearch集群中，而Kibana则从ES集群中查询数据生成图表，再返回给Browser。<br>2、环境：<br>Linux:<br><img src="20160802213232331.png" alt="这里写图片描述"><br>Elasticsearch：elasticsearch-2.3.4.tar.gz<br>Logstash：logstash-2.3.4.tar.gz<br>Kibana：kibana-4.5.2-linux-x64.tar.gz<br>Jdk：jdk-8u91-linux-x64.tar.gz<br>3、jdk的安装：<br> mkdir -p /usr/local/java/<br> tar -zxvf jdk-8u91-linux-x64.tar.gz -C /usr/local/java/<br> vim /etc/profile<br>加入：<br>JAVA_HOME=/usr/local/java/jdk1.8.0_91<br>PATH=$JAVA_HOME/bin:$PATH<br>CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar<br>export JAVA_HOME<br>export PATH<br>export CLASSPATH<br><img src="20160802213301269.png" alt="这里写图片描述"><br>执行：<br> . /etc/profile #生效配置<br> java -version<br>4、安装配置Elasticsearch<br>4.1、安装配置Elasticsearch<br> tar -zxvf elasticsearch-2.3.4.tar.gz<br> cd elasticsearch-2.3.4<br>然后编辑ES的配置文件：<br>vim config/elasticsearch.yml<br>修改以下配置项：<br>cluster.name: wen<br>node.name: node-1<br>path.data: /path/to/data<br>path.logs: /path/to/logs<br>当前hostname或IP，这里使用ip<br>network.host: 10.10.20.210<br>http.port: 9200<br><img src="20160802213420880.png" alt="这里写图片描述"><br>4.2、启动elasticsearch<br> ./bin/elasticsearch<br>报错：<br><img src="20160802213451131.png" alt="这里写图片描述"><br>不能使用root用户启动elasticsearch<br><strong>解决方法</strong>: <a href="http://my.oschina.net/topeagle/blog/591451?fromerr=mzOr2qzZ" target="_blank" rel="noopener">http://my.oschina.net/topeagle/blog/591451?fromerr=mzOr2qzZ</a><br>将/data/soft/ch/elasticsearch-2.3.4/所属用户和组改为另外一个非root账户:<br>4.2.1、创建esgp组<br> groupadd esgp<br>4.2.2、创建用户es 添加到esgp组设置用户的密码为es123<br> useradd es -g esgp -p es123<br>4.2.3、更改elasticsearch-2.3.4文件夹及内部文件的所属用户及组为es:esgp<br> chown -R es:esgp  elasticsearch-2.3.4</p>
+<p><img src="20160802213623063.png" alt="这里写图片描述"><br>4.2.4、切换到es用户<br> su es<br>4.2.5、启动elasticsearch<br> ./elasticsearch-2.3.4/bin/elasticsearch<br><img src="20160802213649711.png" alt="这里写图片描述"><br>修改/path/to/logs/和/path/to/data/的权限：设置/path的用户为es,组为esgp<br> su root<br> chown -R es:esgp /path<br><img src="20160802213724884.png" alt="这里写图片描述"><br>再启动elasticsearch<br><img src="20160802213745415.png" alt="这里写图片描述"><br>使用ctrl+C停止。当然，也可以使用<strong>后台进程</strong>的方式启动ES：<br> ./elasticsearch-2.3.4/bin/elasticsearch –d<br>或者<br>./elasticsearch-2.3.4/bin/elasticsearch &amp;<br><img src="20160802213826158.png" alt="这里写图片描述"><br>4.2.6、可以打开页面10.10.20.210:920，将会看到以下内容<br><img src="20160802213847346.png" alt="这里写图片描述"><br><img src="20160802213902002.png" alt="这里写图片描述"><br>5、安装elasticsearch的插件：elasticsearch-head<br><a href="https://github.com/mobz/elasticsearch-head" target="_blank" rel="noopener">https://github.com/mobz/elasticsearch-head</a><br><a href="http://blog.csdn.net/july_2/article/details/24481935" target="_blank" rel="noopener">http://blog.csdn.net/july_2/article/details/24481935</a><br>5.1、插件安装方法1：<br>5.1.1.#./elasticsearch-2.3.4/bin/plugin -install mobz/elasticsearch-head<br>5.1.2.运行es<br>5.1.3.打开<br><a href="http://10.10.20.210:9200/_plugin/head/" target="_blank" rel="noopener">http://10.10.20.210:9200/_plugin/head/</a></p>
+<p>5.2、插件安装方法2：<br>5.2.1.<a href="https://github.com/mobz/elasticsearch-head下载zip" target="_blank" rel="noopener">https://github.com/mobz/elasticsearch-head下载zip</a> 解压<br><img src="20160802213940605.png" alt="这里写图片描述"><br>5.2.2.建立elasticsearch-2.3.4/plugins/head/_site文件<br> mkdir -p ./elasticsearch-2.3.4/plugins/head/_site<br>5.2.3.将解压后的<code>elasticsearch-head-master</code>文件夹下的文件copy到<code>_site</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">su root  #切换到root用户</span><br><span class="line">unzip elasticsearch-head-master.zip   #解压</span><br><span class="line">cp -r /data/soft/ch/elasticsearch-head-master/* /data/soft/ch/elasticsearch-2.3.4/plugins/head/\_site/</span><br></pre></td></tr></table></figure>
+
+<p> <img src="20160802214101488.png" alt="这里写图片描述"><br> 5.2.4.运行es<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"> su es  #切换到es用户</span><br><span class="line">/data/soft/ch/elasticsearch-2.3.4/bin/elasticsearch</span><br></pre></td></tr></table></figure></p>
+<p><img src="20160802214136624.png" alt="这里写图片描述"><br>会报错，如上，<strong>拷贝plugin-descriptor.properties文件</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cp /data/soft/ch/elasticsearch-2.3.4/plugins/head/\_site/plugin-descriptor.properties /data/soft/ch/elasticsearch-2.3.4/plugins/head/</span><br></pre></td></tr></table></figure>
+
+<p>再启动elasticsearch<br>5.2.5.打开<a href="http://10.10.20.210:9200/`_plugin`/head/" target="_blank" rel="noopener">http://10.10.20.210:9200/`_plugin`/head/</a><br><img src="20160802214222770.png" alt="这里写图片描述"><br>6、安装logstash-2.3.4.tar.gz</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">tar -zxvf logstash-2.3.4.tar.gz</span><br><span class="line">cd logstash-2.3.4</span><br><span class="line">mkdir config</span><br><span class="line">touch file_to_es.conf   #创建file_to_es.conf文件</span><br></pre></td></tr></table></figure>
+
+<p> <img src="20160802214324330.png" alt="这里写图片描述"><br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vim file_to_es.conf</span><br></pre></td></tr></table></figure></p>
+<p>输入内容：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"> #For detail structure of this file</span><br><span class="line"> #Set: https://www.elastic.co/guide/en/logstash/current/configuration-file-structure.html</span><br><span class="line">input &#123;</span><br><span class="line">  # For detail config for file as input,</span><br><span class="line">  # See: https://www.elastic.co/guide/en/logstash/current/plugins-inputs-file.html</span><br><span class="line">  file&#123;</span><br><span class="line">    path =&gt; &quot;/data/java/apache-tomcat-ware/logs/catalina.out&quot;</span><br><span class="line">  &#125;</span><br><span class="line">  # For detail config for log4j as input,</span><br><span class="line">  # See: https://www.elastic.co/guide/en/logstash/current/plugins-inputs-log4j.html</span><br><span class="line">  #log4j &#123;</span><br><span class="line">  #  mode =&gt; &quot;server&quot;</span><br><span class="line">  #  host =&gt; &quot;10.10.20.210&quot;</span><br><span class="line">  #  port =&gt; 4567</span><br><span class="line">  #&#125;</span><br><span class="line">&#125;</span><br><span class="line">filter &#123;</span><br><span class="line">  #Only matched data are send to output.</span><br><span class="line">&#125;</span><br><span class="line">output &#123;</span><br><span class="line">  # For detail config for elasticsearch as output,</span><br><span class="line">  # See: https://www.elastic.co/guide/en/logstash/current/plugins-outputs-elasticsearch.html</span><br><span class="line">  elasticsearch &#123;</span><br><span class="line">    action =&gt; &quot;index&quot;          #The operation on ES</span><br><span class="line">    hosts  =&gt; &quot;10.10.20.210:9200&quot;   #ElasticSearch host, can be array.</span><br><span class="line">    index  =&gt; &quot;ware-manager-dev&quot;         #The index to write data to.</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>启动logstash</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./logstash-2.3.4/bin/logstash agent -f ./logstash-2.3.4/config/file_to_es.conf</span><br></pre></td></tr></table></figure>
+
+<p><img src="20160802214412190.png" alt="这里写图片描述"><br>后台启动（加上&amp;）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./logstash-2.3.4/bin/logstash agent -f ./logstash-2.3.4/config/file_to_es.conf &amp;</span><br></pre></td></tr></table></figure>
+
+<p> <img src="20160802214441287.png" alt="这里写图片描述"><br> 查看进程<br> <img src="20160802214507600" alt="这里写图片描述"><br> 可以在<a href="http://10.10.20.210:9200/`_plugin`/head/中看到自动创建了ware-manager-dev这个索引，里面保存的是ware-manager这个项目的日志" target="_blank" rel="noopener">http://10.10.20.210:9200/`_plugin`/head/中看到自动创建了ware-manager-dev这个索引，里面保存的是ware-manager这个项目的日志</a><br> <img src="20160802214535116.png" alt="这里写图片描述"><br> <img src="20160802214605958.png" alt="这里写图片描述"><br> <strong>注意：如果在同一个服务器对不同的文件，设置不同的索引，那么可以增加配置文件然后制定配置文件启动即可</strong><br> <img src="20160802214633881.png" alt="这里写图片描述"><br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># ./logstash-2.3.4/bin/logstash agent -f ./logstash-2.3.4/config/order_to_es.conf &amp;</span><br><span class="line">#./logstash-2.3.4/bin/logstash agent -f ./logstash-2.3.4/config/ware_to_es.conf &amp;</span><br></pre></td></tr></table></figure></p>
+<p> <img src="20160802214710163.png" alt="这里写图片描述"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line">order_to_es.conf的内容：</span><br><span class="line"># For detail structure of this file</span><br><span class="line"># Set: https://www.elastic.co/guide/en/logstash/current/configuration-file-structure.html</span><br><span class="line">input &#123;</span><br><span class="line">  file&#123;</span><br><span class="line">    path =&gt; &quot;/data/applogs/**order**/wrapper.*.log&quot;</span><br><span class="line">  &#125;</span><br><span class="line">  # For detail config for log4j as input,</span><br><span class="line">  # See: https://www.elastic.co/guide/en/logstash/current/plugins-inputs-log4j.html</span><br><span class="line">  #log4j &#123;</span><br><span class="line">  #  mode =&gt; &quot;server&quot;</span><br><span class="line">  #  host =&gt; &quot;10.10.20.206&quot;</span><br><span class="line">  #  port =&gt; 4567</span><br><span class="line">  #&#125;</span><br><span class="line">&#125;</span><br><span class="line">filter &#123;</span><br><span class="line">  #Only matched data are send to output.</span><br><span class="line">&#125;</span><br><span class="line">output &#123;</span><br><span class="line">  # For detail config for elasticsearch as output,</span><br><span class="line">  # See: https://www.elastic.co/guide/en/logstash/current/plugins-outputs-elasticsearch.html</span><br><span class="line">  elasticsearch &#123;</span><br><span class="line">    action =&gt; &quot;index&quot;          #The operation on ES</span><br><span class="line">    hosts  =&gt; &quot;10.10.20.206:9200&quot;   #ElasticSearch host, can be array.</span><br><span class="line">    index  =&gt; &quot;**order-server-test**&quot;         #The index to write data to.</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">ware_to_es.conf的内容：</span><br><span class="line"># For detail structure of this file</span><br><span class="line"># Set: https://www.elastic.co/guide/en/logstash/current/configuration-file-structure.html</span><br><span class="line">input &#123;</span><br><span class="line">  file&#123;</span><br><span class="line">    path =&gt; &quot;/data/applogs/**ware**/wrapper.*.log&quot;</span><br><span class="line">  &#125;</span><br><span class="line">  # For detail config for log4j as input,</span><br><span class="line">  # See: https://www.elastic.co/guide/en/logstash/current/plugins-inputs-log4j.html</span><br><span class="line">  #log4j &#123;</span><br><span class="line">  #  mode =&gt; &quot;server&quot;</span><br><span class="line">  #  host =&gt; &quot;10.10.20.206&quot;</span><br><span class="line">  #  port =&gt; 4567</span><br><span class="line">  #&#125;</span><br><span class="line">&#125;</span><br><span class="line">filter &#123;</span><br><span class="line">  #Only matched data are send to output.</span><br><span class="line">&#125;</span><br><span class="line">output &#123;</span><br><span class="line">  # For detail config for elasticsearch as output,</span><br><span class="line">  # See: https://www.elastic.co/guide/en/logstash/current/plugins-outputs-elasticsearch.html</span><br><span class="line">  elasticsearch &#123;</span><br><span class="line">    action =&gt; &quot;index&quot;          #The operation on ES</span><br><span class="line">    hosts  =&gt; &quot;10.10.20.206:9200&quot;   #ElasticSearch host, can be array.</span><br><span class="line">    index  =&gt; &quot;**ware-server-test**&quot;         #The index to write data to.</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>7、安装kibana</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">tar -zxvf kibana-4.5.2-linux-x64.tar.gz</span><br><span class="line"> cd kibana-4.5.2-linux-x64</span><br><span class="line"> vim config/kibana.yml</span><br></pre></td></tr></table></figure>
+
+<p>修改内容如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">server.port: 5601</span><br><span class="line">server.host: &quot;10.10.20.210&quot;</span><br><span class="line">elasticsearch.url: &quot;http://10.10.20.210:9200&quot;</span><br><span class="line">kibana.index: &quot;.kibana&quot;</span><br></pre></td></tr></table></figure>
+
+<p><img src="20160802214827148.png" alt="这里写图片描述"><br>注意：其中server.host是安装kibana服务的地址<br>elasticsearch.url为elasticsearch安装的地址<br>启动kibana</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/data/soft/ch/kibana-4.5.2-linux-x64/bin/kibana</span><br></pre></td></tr></table></figure>
+
+<p><img src="20160802214853540.png" alt="这里写图片描述"><br>可以通过<a href="http://10.10.20.206:5601访问到。" target="_blank" rel="noopener">http://10.10.20.206:5601访问到。</a><br><img src="20160802214914320.png" alt="这里写图片描述"><br>也可以后台启动kibana(<strong>加上&amp;</strong>)<br> /data/soft/ch/kibana-4.5.2-linux-x64/bin/kibana <strong>&amp;</strong><br> <img src="20160802214949057.png" alt="这里写图片描述"><br> 注意：这时加上了&amp;虽然执行了后台启动，但是还是有日志打印出来，使用ctrl+c可以退出。<br>但是如果直接关闭了Xshell,这时服务也会停止，访问<a href="http://10.10.20.206:5601就失败了。" target="_blank" rel="noopener">http://10.10.20.206:5601就失败了。</a></p>
+<p><img src="20160802215013510.png" alt="这里写图片描述"><br>解决方法：<br>执行了/data/soft/ch/kibana-4.5.2-linux-x64/bin/kibana &amp;命令后，不使用ctrl+c去退出日志，<br>而是使用exit;这样即使关闭了Xshell窗口服务也不会挂了。<br><img src="20160802215039664.png" alt="这里写图片描述"><br>配置kibana：<br><img src="20160802215105746.png" alt="这里写图片描述"><br>这时在elasticsearch中多了一个kibana的索引<br><img src="20160802215128024.png" alt="这里写图片描述"><br>为了后续使用Kibana，需要配置至少一个Index名字或者Pattern，它用于在分析时确定ES中的Index。这里我输入之前配置的Index 名字ware-manager-dev，Kibana会自动加载该Index下doc的field，并自动选择合适的field用于图标中的时间字段：<br><img src="20160802215154747.png" alt="这里写图片描述"><br>点击Discover查看日志<br><img src="20160802215216545.png" alt="这里写图片描述"><br>设置只查看message信息:<br><img src="20160802215240915.png" alt="这里写图片描述"><br><img src="20160802215302619.png" alt="这里写图片描述"><br>设置自动刷新：<br><img src="20160802215327187.png" alt="这里写图片描述"><br><img src="20160802215349000.png" alt="这里写图片描述"><br><img src="20160802215405228.png" alt="这里写图片描述"><br>更多配置请查看：<br><a href="http://my.oschina.net/itblog/blog/547250" target="_blank" rel="noopener">http://my.oschina.net/itblog/blog/547250</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/" title="ELK_ElasticSearch-Logstash-Kibana搭建实时日志分析平台">https://ceaser.wang/2018/09/28/ELK-ElasticSearch-Logstash-Kibana搭建实时日志分析平台/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/elasticsearch/" rel="tag"><i class="fa fa-tag"></i> elasticsearch</a>
+              <a href="/tags/kibana/" rel="tag"><i class="fa fa-tag"></i> kibana</a>
+              <a href="/tags/logstash/" rel="tag"><i class="fa fa-tag"></i> logstash</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/09/28/elasticsearch/ELK5.6.11_install/" rel="prev" title="ELK5.6.11_install">
+      <i class="fa fa-chevron-left"></i> ELK5.6.11_install
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/10/04/ThreadLocal可能引起的内存泄露/" rel="next" title="ThreadLocal可能引起的内存泄露">
+      ThreadLocal可能引起的内存泄露 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

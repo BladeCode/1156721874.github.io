@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ceaser.wang","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":true,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":true},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="zuulapi网关 所有的客户端请求通过这个网关访问后台的服务，他可以使用一定的路由配置来判断某一个url由那个服务来处理，并从eureka获取注册的服务来转发请求。">
+<meta name="keywords" content="zuul">
+<meta property="og:type" content="article">
+<meta property="og:title" content="spring_boot_cloud(19)zuul">
+<meta property="og:url" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/index.html">
+<meta property="og:site_name" content="南贺神社">
+<meta property="og:description" content="zuulapi网关 所有的客户端请求通过这个网关访问后台的服务，他可以使用一定的路由配置来判断某一个url由那个服务来处理，并从eureka获取注册的服务来转发请求。">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/zuul1.png">
+<meta property="og:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/zuul-filter.png">
+<meta property="og:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/zuul-cluster.png">
+<meta property="og:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/zuul-autoconfigation.png">
+<meta property="og:updated_time" content="2021-05-30T04:23:30.533Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="spring_boot_cloud(19)zuul">
+<meta name="twitter:description" content="zuulapi网关 所有的客户端请求通过这个网关访问后台的服务，他可以使用一定的路由配置来判断某一个url由那个服务来处理，并从eureka获取注册的服务来转发请求。">
+<meta name="twitter:image" content="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/zuul1.png">
+
+<link rel="canonical" href="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>spring_boot_cloud(19)zuul | 南贺神社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">南贺神社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">你写程序有写诗一样的感觉吗?</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags<span class="badge">205</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories<span class="badge">24</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives<span class="badge">211</span></a>
+
+  </li>
+        <li class="menu-item menu-item-0xcc">
+
+    <a href="/0xcc/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>0XCC</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/../0xcc/index/Uchiha.jpg">
+      <meta itemprop="name" content="CeaserWang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="南贺神社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          spring_boot_cloud(19)zuul
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-06-21 08:31:30" itemprop="dateCreated datePublished" datetime="2020-06-21T08:31:30+00:00">2020-06-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-30 04:23:30" itemprop="dateModified" datetime="2021-05-30T04:23:30+00:00">2021-05-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/spring-boot-cloud/" itemprop="url" rel="index"><span itemprop="name">spring_boot_cloud</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/" class="post-meta-item leancloud_visitors" data-flag-title="spring_boot_cloud(19)zuul" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="zuul"><a href="#zuul" class="headerlink" title="zuul"></a>zuul</h3><p>api网关 所有的客户端请求通过这个网关访问后台的服务，他可以使用一定的路由配置来判断某一个url由那个服务来处理，并从eureka获取注册的服务来转发请求。<br><img src="zuul1.png" alt="zuul1.png"></p>
+<a id="more"></a>
+
+<h4 id="微服务网关应该具备的要素"><a href="#微服务网关应该具备的要素" class="headerlink" title="微服务网关应该具备的要素"></a>微服务网关应该具备的要素</h4><ul>
+<li>稳定性、高可用：网关是所有请求的入口，如果这里出现问题就会导致所有的服务不能对外提供服务了，可见其重要性</li>
+<li>性能、并发性：既然是所有请求的入口，那就意味着并发量大，这对其性能就有很高的要求。</li>
+<li>安全性：确保服务的安全，防止外部恶意访问，就像金融行业一般会对数据进行加密传输。</li>
+<li>拓展性：因为各种请求都经过网关服务，所以网关上大有文章可做，是处理所有非业务功能的绝佳场所，比如流控，协议转发，日志，防刷等等。</li>
+</ul>
+<h4 id="zuul的主要功能"><a href="#zuul的主要功能" class="headerlink" title="zuul的主要功能"></a>zuul的主要功能</h4><ul>
+<li>认证和安全， 对每一个resource进行身份认证</li>
+<li>追踪和监控，实时观察后端微服务的tps，响应时间，失败数量等准确的信息。</li>
+<li>日志 记录所有请求的访问日志数据，可以为日志分析和查询提供统一支持</li>
+<li>动态路由 动态的将request路由到后端的服务上去。</li>
+<li>压力测试 逐渐的增加访问集群的压力，来测试集群的性能</li>
+<li>限流，根据一定的策略对流量进行限定</li>
+<li>静态响应 直接在网关返回一些响应，而不是通过内部的服务返回响应。</li>
+</ul>
+<h4 id="zuul的优势"><a href="#zuul的优势" class="headerlink" title="zuul的优势"></a>zuul的优势</h4><ul>
+<li>易于监控，可在微服务网关收集监控数据并将其推送到外部系统进行分析。</li>
+<li>易于认证，可以在微服务网关上进行认证，然后再将其请求转发到后端的微服务，而无须在每个微服务上进行认证</li>
+<li>减少了客户端与各个微服务之间的交互次数。</li>
+</ul>
+<h4 id="zuul介绍"><a href="#zuul介绍" class="headerlink" title="zuul介绍"></a>zuul介绍</h4><ul>
+<li>zuul的主要功能是路由转发和过滤器，路由功能是微服务的一部分，比如/api/user转发到user服务，/api/shop转发到shop服务，zuul默认和ribbon结合实现了负载均衡的功能，类似于nginx转发</li>
+<li>提供代理、过滤、路由等功能</li>
+</ul>
+<h4 id="zuul：hystrix和ribbon支持"><a href="#zuul：hystrix和ribbon支持" class="headerlink" title="zuul：hystrix和ribbon支持"></a>zuul：hystrix和ribbon支持</h4><p>zuul天生就拥有线程隔离和断路器的自我保护功能，以及对服务调用的客户端负载均衡的功能，但是需要注意，当使用path与url的映射关系来配置路由规则的时候，对于路由转发的请求不会采用hystrix command来包装，所以这类路由请求没有线程隔离和断路器的保护，并且也不会有负载均衡的能力。因此，我们在使用zuul的时候尽量使用path和serviceid的组合来进行配置，这样不仅可以保证api的网关的健壮和稳定，也能用到ribbon的客户端负载均衡功能。</p>
+<h4 id="zuul的4种过滤器"><a href="#zuul的4种过滤器" class="headerlink" title="zuul的4种过滤器"></a>zuul的4种过滤器</h4><ul>
+<li>zuul通过servlet来实现<ul>
+<li>pre 过滤器</li>
+<li>routing过滤器</li>
+<li>post过滤器</li>
+<li>error过滤器</li>
+</ul>
+</li>
+</ul>
+<h5 id="zuul的4种过滤器-1"><a href="#zuul的4种过滤器-1" class="headerlink" title="zuul的4种过滤器"></a>zuul的4种过滤器</h5><ul>
+<li>前置(pre)：首先到达的是这里，注意这里是指Pre这种类型的过滤器，实际上不止一个过滤器，队请求路由前置加工，比如参数校验限流、鉴权</li>
+<li>路由(route)：这里的是将请求转发到具体的original server（具体的微服务）上，可以在这里重写http请求</li>
+<li>后置(post):这里是已经拿到的请求结果了，如果想对结果再加工一下，可以在这里，比如统计、日志。</li>
+<li>错误(error)：pre或者route、post出现异常就会来到error，这里了可以统一处理异常。</li>
+</ul>
+<p><img src="zuul-filter.png" alt="zuul-filter.png"></p>
+<h4 id="zuul和cluster的模式"><a href="#zuul和cluster的模式" class="headerlink" title="zuul和cluster的模式"></a>zuul和cluster的模式</h4><p><img src="zuul-cluster.png" alt="zuul-cluster.png"><br>看图说话，计算机软件世界任何问题都可以通过抽象一层的方式把问题解决，zuul就是抽象的那一层。</p>
+<h4 id="编码"><a href="#编码" class="headerlink" title="编码"></a>编码</h4><p>依赖： org.springframework.cloud:spring-cloud-starter-netflix-zuul<br>引入依赖之后会默认引入eureka、ribbon、histrix的支持。</p>
+<h4 id="配置路由规则"><a href="#配置路由规则" class="headerlink" title="配置路由规则"></a>配置路由规则</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">zuul:</span><br><span class="line">  routes:</span><br><span class="line">    eureka-client-api:</span><br><span class="line">      path: /eureka-client-api/**</span><br><span class="line">      serviceId: eureka-client</span><br><span class="line"></span><br><span class="line">    feign-client-api:</span><br><span class="line">      path: /feign-client-api/**</span><br><span class="line">      serviceId: feign-client</span><br></pre></td></tr></table></figure>
+
+<p>启动类：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">@EnableEurekaClient</span><br><span class="line">@EnableZuulProxy</span><br><span class="line">public class EurekaZuulClientApplication &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SpringApplication.run(EurekaZuulClientApplication.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>访问：<a href="http://localhost:5000/eureka-client-api/info" target="_blank" rel="noopener">http://localhost:5000/eureka-client-api/info</a><br>输出：welcome: zhangsan, your address is shanghai<br>zuul正常运行。<br>这个访问自带了 负载均衡、熔断的支持。</p>
+<p>feign的访问：<a href="http://localhost:5000/feign-client-api/infoByFeign" target="_blank" rel="noopener">http://localhost:5000/feign-client-api/infoByFeign</a><br>输出：welcome: zhangsan, your address is shanghai<br>zuul正常运行。</p>
+<h4 id="直接访问微服务的问题"><a href="#直接访问微服务的问题" class="headerlink" title="直接访问微服务的问题"></a>直接访问微服务的问题</h4><p>我们配置了zuul，但是可以直接通过<a href="http://localhost:8888/info的方式直接访问微服务，越过了zuul。" target="_blank" rel="noopener">http://localhost:8888/info的方式直接访问微服务，越过了zuul。</a><br>zuul想到了这一点，只需要加一个配置项即可：</p>
+<h4 id="端点信息开启"><a href="#端点信息开启" class="headerlink" title="端点信息开启"></a>端点信息开启</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">management:</span><br><span class="line">  endpoints:</span><br><span class="line">    web:</span><br><span class="line">      exposure:</span><br><span class="line">        include: &apos;*&apos;</span><br><span class="line">  endpoint:</span><br><span class="line">    shutdown:</span><br><span class="line">      enabled: true</span><br></pre></td></tr></table></figure>
+
+<p>shutdown可以通过url的方式关闭app，不需要Linux的命令操作。</p>
+<h5 id="routes端点"><a href="#routes端点" class="headerlink" title="routes端点"></a>routes端点</h5><p>访问：<a href="http://localhost:5000/actuator/routes" target="_blank" rel="noopener">http://localhost:5000/actuator/routes</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  /eureka-client-api/**: &quot;eureka-client&quot;,</span><br><span class="line">  /feign-client-api/**: &quot;feign-client&quot;,</span><br><span class="line">  /feign-client/**: &quot;feign-client&quot;,</span><br><span class="line">  /eureka-ribbon-client/**: &quot;eureka-ribbon-client&quot;,</span><br><span class="line">  /eureka-client/**: &quot;eureka-client&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>罗列是当前已经好的端点的信息。【<code>/feign-client/**: &quot;feign-client&quot;</code>】【<code>/eureka-client/**: &quot;eureka-client&quot;</code>】是默认的映射，<br>可以通过[<a href="http://localhost:5000/eureka-client/info]进行访问。" target="_blank" rel="noopener">http://localhost:5000/eureka-client/info]进行访问。</a><br>即默认的微服务的名字会做默认映射。我们可以忽略掉这种配置:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">zuul:</span><br><span class="line">  routes:</span><br><span class="line">    eureka-client-api:</span><br><span class="line">      path: /eureka-client-api/**</span><br><span class="line">      serviceId: eureka-client</span><br><span class="line"></span><br><span class="line">    feign-client-api:</span><br><span class="line">      path: /feign-client-api/**</span><br><span class="line">      serviceId: feign-client</span><br><span class="line"></span><br><span class="line">  ignored-patterns: /eureka-client/**, /feign-client/**</span><br></pre></td></tr></table></figure>
+
+<p>ignored-patterns过滤掉不想映射的路径形式。<br>此时访问[<a href="http://localhost:5000/eureka-client/info]就会404，证明配置有效。" target="_blank" rel="noopener">http://localhost:5000/eureka-client/info]就会404，证明配置有效。</a></p>
+<h4 id="调试"><a href="#调试" class="headerlink" title="调试"></a>调试</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">logging:</span><br><span class="line">  level:</span><br><span class="line">    com.netflix: debug</span><br></pre></td></tr></table></figure>
+
+<p>这样请求的路由转发日志就会打印出来。</p>
+<h4 id="ignored-headers"><a href="#ignored-headers" class="headerlink" title="ignored-headers"></a>ignored-headers</h4><p>访问：<br>curl -H ‘authKey:authKey’ -H ‘authKey2:authKey2’ ‘<a href="http://localhost:5000/eureka-client-api/getStudent?name=zhansan&amp;address=tianjin&#39;" target="_blank" rel="noopener">http://localhost:5000/eureka-client-api/getStudent?name=zhansan&amp;address=tianjin&#39;</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  id: 20,</span><br><span class="line">  name: &quot;zhangsan&quot;,</span><br><span class="line">  address: &quot;guangzhou&quot;,</span><br><span class="line">  parent: &#123;</span><br><span class="line">    id: 10,</span><br><span class="line">    name: &quot;parentName&quot;,</span><br><span class="line">    address: &quot;parentAddress&quot;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个时候我们在eureka-client的提供者查看日志 是能够看到header都能接受到的，证明zuul会把header的信息也会转发下去。</p>
+<p>那么我们是否可以忽略掉一些header呢，答案是可以的：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">zuul:</span><br><span class="line">  routes:</span><br><span class="line">    eureka-client-api:</span><br><span class="line">      path: /eureka-client-api/**</span><br><span class="line">      serviceId: eureka-client</span><br><span class="line">    feign-client-api:</span><br><span class="line">      path: /feign-client-api/**</span><br><span class="line">      serviceId: feign-client</span><br><span class="line"></span><br><span class="line">  ignored-patterns: /eureka-client/**, /feign-client/**</span><br><span class="line">  ignored-headers: authKey</span><br></pre></td></tr></table></figure>
+
+<p>配置【ignored-headers: authKey】就可以访问eureka-client-api的时候忽略掉header的配置的key【authKey】。<br>再次访问：<br>访问：<br>curl -H ‘authKey:authKey’ -H ‘authKey2:authKey2’ ‘<a href="http://localhost:5000/eureka-client-api/getStudent?name=zhansan&amp;address=tianjin&#39;" target="_blank" rel="noopener">http://localhost:5000/eureka-client-api/getStudent?name=zhansan&amp;address=tianjin&#39;</a><br>在eureka-client的提供者查看日志，这个时候就不会打印authKey，zuul的规则是不配置过滤，都会传递，配置的话才会生效过滤。</p>
+<h4 id="ZuulFilter"><a href="#ZuulFilter" class="headerlink" title="ZuulFilter"></a>ZuulFilter</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">import com.netflix.zuul.ZuulFilter;</span><br><span class="line">import com.netflix.zuul.context.RequestContext;</span><br><span class="line">import com.netflix.zuul.exception.ZuulException;</span><br><span class="line">import org.springframework.cloud.netflix.zuul.filters.support.FilterConstants;</span><br><span class="line"></span><br><span class="line">import javax.servlet.http.HttpServletRequest;</span><br><span class="line"></span><br><span class="line">    public class MyZuulFilter extends ZuulFilter &#123;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public String filterType() &#123;</span><br><span class="line">        return FilterConstants.PRE_TYPE;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public int filterOrder() &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public boolean shouldFilter() &#123;</span><br><span class="line">        return true;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public Object run() throws ZuulException &#123;</span><br><span class="line">        System.out.println(&quot;Entered MyZuulFilter run Method&quot;);</span><br><span class="line">        //获取当前请求上下文</span><br><span class="line">        RequestContext requestContext = RequestContext.getCurrentContext();</span><br><span class="line">        HttpServletRequest request = requestContext.getRequest();</span><br><span class="line">        String method = request.getMethod();</span><br><span class="line">        String url = request.getRequestURL().toString();</span><br><span class="line">        System.out.println(&quot;method: &quot; + method + &quot;, url: &quot; + url);</span><br><span class="line">        return null;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">import com.netflix.zuul.ZuulFilter;</span><br><span class="line">import com.shengsiyuan.zuul.filter.MyZuulFilter;</span><br><span class="line">import org.springframework.context.annotation.Bean;</span><br><span class="line">import org.springframework.context.annotation.Configuration;</span><br><span class="line"></span><br><span class="line">@Configuration</span><br><span class="line">public class MyZuulConfig &#123;</span><br><span class="line"></span><br><span class="line">    @Bean</span><br><span class="line">    public ZuulFilter myZuulFilter() &#123;</span><br><span class="line">        return new MyZuulFilter();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="zuul自动装配的源码解读"><a href="#zuul自动装配的源码解读" class="headerlink" title="zuul自动装配的源码解读"></a>zuul自动装配的源码解读</h3><p>我们打开 启动的入口：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@SpringBootApplication</span><br><span class="line">@EnableEurekaClient</span><br><span class="line">@EnableZuulProxy</span><br><span class="line">public class EurekaZuulClientApplication &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SpringApplication.run(EurekaZuulClientApplication.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>zuul的装配要从EnableZuulProxy注解开始，我们看一下EnableZuulProxy的逻辑：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@EnableCircuitBreaker</span><br><span class="line">@Target(ElementType.TYPE)</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Import(ZuulProxyMarkerConfiguration.class)</span><br><span class="line">public @interface EnableZuulProxy &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>引入了ZuulProxyMarkerConfiguration.class</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">@Configuration(proxyBeanMethods = false)</span><br><span class="line">public class ZuulProxyMarkerConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	public Marker zuulProxyMarkerBean() &#123;</span><br><span class="line">		return new Marker();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	class Marker &#123;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>alt + f7 看一下ZuulProxyMarkerConfiguration在哪里被引用：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Class</span><br><span class="line">    ZuulProxyMarkerConfiguration</span><br><span class="line">Found usages  (2 usages found)</span><br><span class="line">    Nested class access  (1 usage found)</span><br><span class="line">        Gradle: org.springframework.cloud:spring-cloud-netflix-zuul:2.2.2.RELEASE  (1 usage found)</span><br><span class="line">            org.springframework.cloud.netflix.zuul  (1 usage found)</span><br><span class="line">                ZuulProxyAutoConfiguration  (1 usage found)</span><br><span class="line">                    65 @ConditionalOnBean(ZuulProxyMarkerConfiguration.Marker.class)</span><br><span class="line">    Usage in .class  (1 usage found)</span><br><span class="line">        Gradle: org.springframework.cloud:spring-cloud-netflix-zuul:2.2.2.RELEASE  (1 usage found)</span><br><span class="line">            org.springframework.cloud.netflix.zuul  (1 usage found)</span><br><span class="line">                EnableZuulProxy  (1 usage found)</span><br><span class="line">                    41 @Import(ZuulProxyMarkerConfiguration.class)</span><br></pre></td></tr></table></figure>
+
+<p>关键点： @ConditionalOnBean(ZuulProxyMarkerConfiguration.Marker.class)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Configuration(proxyBeanMethods = false)</span><br><span class="line">@Import(&#123; RibbonCommandFactoryConfiguration.RestClientRibbonConfiguration.class,</span><br><span class="line">		RibbonCommandFactoryConfiguration.OkHttpRibbonConfiguration.class,</span><br><span class="line">		RibbonCommandFactoryConfiguration.HttpClientRibbonConfiguration.class,</span><br><span class="line">		HttpClientConfiguration.class &#125;)</span><br><span class="line">@ConditionalOnBean(ZuulProxyMarkerConfiguration.Marker.class)</span><br><span class="line">public class ZuulProxyAutoConfiguration extends ZuulServerAutoConfiguration &#123;</span><br><span class="line">...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ZuulProxyAutoConfiguration就是自动装配的逻辑.<br>我们打开jar包看一下：<br><img src="zuul-autoconfigation.png" alt="zuul-autoconfigation.png"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">org.springframework.boot.autoconfigure.EnableAutoConfiguration=\</span><br><span class="line">org.springframework.cloud.netflix.zuul.ZuulServerAutoConfiguration,\</span><br><span class="line">org.springframework.cloud.netflix.zuul.ZuulProxyAutoConfiguration</span><br></pre></td></tr></table></figure>
+
+<p>都是自动转配的类。</p>
+<h3 id="过滤器讲解"><a href="#过滤器讲解" class="headerlink" title="过滤器讲解"></a>过滤器讲解</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">org.springframework.cloud.netflix.zuul.filters.post</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.post.LocationRewriteFilter</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.post.SendErrorFilter</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.post.SendResponseFilter</span><br><span class="line">org.springframework.cloud.netflix.zuul.filters.pre</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.pre.DebugFilter</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.pre.FormBodyWrapperFilter</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.pre.PreDecorationFilter</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.pre.Servlet30RequestWrapper</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.pre.Servlet30WrapperFilter</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.pre.ServletDetectionFilter</span><br><span class="line">org.springframework.cloud.netflix.zuul.filters.route</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.apache</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.okhttp</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.support</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.FallbackProvider</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.RestClientRibbonCommand</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.RestClientRibbonCommandFactory</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.RibbonCommand</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.RibbonCommandFactory</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.RibbonRoutingFilter</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.SendForwardFilter</span><br><span class="line">  org.springframework.cloud.netflix.zuul.filters.route.SimpleHostRoutingFilter</span><br></pre></td></tr></table></figure>
+
+<h4 id="ServletDetectionFilter-filterOrder"><a href="#ServletDetectionFilter-filterOrder" class="headerlink" title="ServletDetectionFilter.filterOrder()"></a>ServletDetectionFilter.filterOrder()</h4><p>ServletDetectionFilter是用来探测请求是spring mvc的DispatcherServlet还是ZuulServlet的形式执行的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Must run before other filters that rely on the difference between DispatcherServlet</span><br><span class="line"> * and ZuulServlet.</span><br><span class="line"> 必须要在DispatcherServlet和ZuulServlet之前执行</span><br><span class="line"> */</span><br><span class="line">@Override</span><br><span class="line">public int filterOrder() &#123;</span><br><span class="line">  return SERVLET_DETECTION_FILTER_ORDER;//-3 最先执行的</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public Object run() &#123;</span><br><span class="line">  RequestContext ctx = RequestContext.getCurrentContext();</span><br><span class="line">  HttpServletRequest request = ctx.getRequest();</span><br><span class="line">  //是否是DispatcherServlet</span><br><span class="line">  if (!(request instanceof HttpServletRequestWrapper)</span><br><span class="line">      &amp;&amp; isDispatcherServletRequest(request)) &#123;</span><br><span class="line">    ctx.set(IS_DISPATCHER_SERVLET_REQUEST_KEY, true);</span><br><span class="line">  &#125;</span><br><span class="line">  else &#123;</span><br><span class="line">    ctx.set(IS_DISPATCHER_SERVLET_REQUEST_KEY, false);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  return null;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Servlet30WrapperFilter"><a href="#Servlet30WrapperFilter" class="headerlink" title="Servlet30WrapperFilter"></a>Servlet30WrapperFilter</h4><p>包装了servlet3.0规范的顾虑器，在ZuulFilter之前执行，顺序-2.</p>
+<h4 id="FormBodyWrapperFilter"><a href="#FormBodyWrapperFilter" class="headerlink" title="FormBodyWrapperFilter"></a>FormBodyWrapperFilter</h4><p>在ZuulFilter之前执行，解析消息体的作用，顺序-1.</p>
+<h4 id="SendErrorFilter"><a href="#SendErrorFilter" class="headerlink" title="SendErrorFilter"></a>SendErrorFilter</h4><p>异常的处理</p>
+<h4 id="SendResponseFilter"><a href="#SendResponseFilter" class="headerlink" title="SendResponseFilter"></a>SendResponseFilter</h4><p>正常的响应处理</p>
+<h4 id="filter的串联FilterProcessor"><a href="#filter的串联FilterProcessor" class="headerlink" title="filter的串联FilterProcessor"></a>filter的串联FilterProcessor</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * runs all filters of the filterType sType/ Use this method within filters to run custom filters by type</span><br><span class="line"> * 根据filterType执行过滤器</span><br><span class="line"> * @param sType the filterType.</span><br><span class="line"> * @return</span><br><span class="line"> * @throws Throwable throws up an arbitrary exception</span><br><span class="line"> */</span><br><span class="line">public Object runFilters(String sType) throws Throwable &#123;</span><br><span class="line">    if (RequestContext.getCurrentContext().debugRouting()) &#123;</span><br><span class="line">        Debug.addRoutingDebug(&quot;Invoking &#123;&quot; + sType + &quot;&#125; type filters&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    boolean bResult = false;</span><br><span class="line">    List&lt;ZuulFilter&gt; list = FilterLoader.getInstance().getFiltersByType(sType);</span><br><span class="line">    if (list != null) &#123;</span><br><span class="line">        for (int i = 0; i &lt; list.size(); i++) &#123;</span><br><span class="line">            ZuulFilter zuulFilter = list.get(i);</span><br><span class="line">            Object result = processZuulFilter(zuulFilter);</span><br><span class="line">            if (result != null &amp;&amp; result instanceof Boolean) &#123;</span><br><span class="line">                bResult |= ((Boolean) result);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return bResult;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>【本期代码：<a href="https://github.com/1156721874/spring_cloud_projects】" target="_blank" rel="noopener">https://github.com/1156721874/spring_cloud_projects】</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>CeaserWang
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/" title="spring_boot_cloud(19)zuul">https://ceaser.wang/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(19)zuul/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/zuul/" rel="tag"><i class="fa fa-tag"></i> zuul</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/06/20/spring_boot_and_cloud/spring_boot_cloud(18)Hystrix/" rel="prev" title="spring_boot_cloud(18)Hystrix">
+      <i class="fa fa-chevron-left"></i> spring_boot_cloud(18)Hystrix
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/06/21/spring_boot_and_cloud/spring_boot_cloud(20)config/" rel="next" title="spring_boot_cloud(19)config">
+      spring_boot_cloud(19)config <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#zuul"><span class="nav-number">1.</span> <span class="nav-text">zuul</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#微服务网关应该具备的要素"><span class="nav-number">1.1.</span> <span class="nav-text">微服务网关应该具备的要素</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zuul的主要功能"><span class="nav-number">1.2.</span> <span class="nav-text">zuul的主要功能</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zuul的优势"><span class="nav-number">1.3.</span> <span class="nav-text">zuul的优势</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zuul介绍"><span class="nav-number">1.4.</span> <span class="nav-text">zuul介绍</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zuul：hystrix和ribbon支持"><span class="nav-number">1.5.</span> <span class="nav-text">zuul：hystrix和ribbon支持</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zuul的4种过滤器"><span class="nav-number">1.6.</span> <span class="nav-text">zuul的4种过滤器</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#zuul的4种过滤器-1"><span class="nav-number">1.6.1.</span> <span class="nav-text">zuul的4种过滤器</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#zuul和cluster的模式"><span class="nav-number">1.7.</span> <span class="nav-text">zuul和cluster的模式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#编码"><span class="nav-number">1.8.</span> <span class="nav-text">编码</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置路由规则"><span class="nav-number">1.9.</span> <span class="nav-text">配置路由规则</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#直接访问微服务的问题"><span class="nav-number">1.10.</span> <span class="nav-text">直接访问微服务的问题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#端点信息开启"><span class="nav-number">1.11.</span> <span class="nav-text">端点信息开启</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#routes端点"><span class="nav-number">1.11.1.</span> <span class="nav-text">routes端点</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#调试"><span class="nav-number">1.12.</span> <span class="nav-text">调试</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ignored-headers"><span class="nav-number">1.13.</span> <span class="nav-text">ignored-headers</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ZuulFilter"><span class="nav-number">1.14.</span> <span class="nav-text">ZuulFilter</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zuul自动装配的源码解读"><span class="nav-number">2.</span> <span class="nav-text">zuul自动装配的源码解读</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过滤器讲解"><span class="nav-number">3.</span> <span class="nav-text">过滤器讲解</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ServletDetectionFilter-filterOrder"><span class="nav-number">3.1.</span> <span class="nav-text">ServletDetectionFilter.filterOrder()</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Servlet30WrapperFilter"><span class="nav-number">3.2.</span> <span class="nav-text">Servlet30WrapperFilter</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#FormBodyWrapperFilter"><span class="nav-number">3.3.</span> <span class="nav-text">FormBodyWrapperFilter</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#SendErrorFilter"><span class="nav-number">3.4.</span> <span class="nav-text">SendErrorFilter</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#SendResponseFilter"><span class="nav-number">3.5.</span> <span class="nav-text">SendResponseFilter</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#filter的串联FilterProcessor"><span class="nav-number">3.6.</span> <span class="nav-text">filter的串联FilterProcessor</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="CeaserWang"
+      src="/../0xcc/index/Uchiha.jpg">
+  <p class="site-author-name" itemprop="name">CeaserWang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">211</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">205</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/1156721874" title="GitHub → https://github.com/1156721874" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:ceaserwang@outlook.com" title="E-Mail → mailto:ceaserwang@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://twodragonlake.com" title="https://twodragonlake.com" rel="noopener" target="_blank">TwoDragonLake</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://rootcluster.github.io" title="https://rootcluster.github.io" rel="noopener" target="_blank">RootCluster</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://museflow.io" title="https://museflow.io" rel="noopener" target="_blank">MuseFlow</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://incoder.org" title="https://incoder.org" rel="noopener" target="_blank">BladeCode</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://kaifa.dev" title="https://kaifa.dev" rel="noopener" target="_blank">Alyenc</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://blog.dazhidayong.cn" title="https://blog.dazhidayong.cn" rel="noopener" target="_blank">Killua</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="https://jocelynshang.cn/" title="https://jocelynshang.cn/" rel="noopener" target="_blank">Jocelyn</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">CeaserWang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'ryAR9bttS7fex1FPEPAylmmJ-gzGzoHsz',
+      appKey     : 'dYqygoN4Y01Bl38OdRoCHUYn',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : true,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>
